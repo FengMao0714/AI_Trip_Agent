@@ -16,9 +16,9 @@ interface RouteLineProps {
 }
 
 const routeColor: Record<number, string> = {
-  1: "#2563eb",
-  2: "#059669",
-  3: "#f97316",
+  1: "#2dd4bf",
+  2: "#fbbf24",
+  3: "#38bdf8",
 };
 
 function hasValidCoordinates(value: { lng: number; lat: number }) {
@@ -55,15 +55,15 @@ export function RouteLine({
       toAMapPosition,
     );
     const overlay = new amap.Polyline({
-      borderWeight: 1,
+      borderWeight: 2,
       geodesic: true,
       lineJoin: "round",
       path,
       showDir: true,
-      strokeColor: routeColor[route.day] ?? "#7c3aed",
-      strokeOpacity: 0.86,
+      strokeColor: routeColor[route.day] ?? "#a78bfa",
+      strokeOpacity: 0.92,
       strokeStyle: route.mode === "步行" ? "dashed" : "solid",
-      strokeWeight: 5,
+      strokeWeight: 6,
       zIndex: 60,
     });
 

@@ -142,11 +142,19 @@ test("renders mock SSE itinerary and manages recent sessions", async ({ page }) 
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 
+  await expect(page.getByText("AI 旅行规划工作台")).toBeVisible();
+  await expect(page.getByText("规划控制台").first()).toBeVisible();
+  await expect(page.getByText("实时 Agent 状态")).toBeVisible();
+
   await page.getByRole("button", { name: "北京3天历史文化路线" }).click();
   await page.getByRole("button", { name: "发送消息" }).click();
 
   await expect(page.getByText("已生成一版测试行程").first()).toBeVisible();
   await expect(page.getByText("行程概览")).toBeVisible();
+  await expect(page.getByText("可信执行分").first()).toBeVisible();
+  await expect(page.getByText("预算使用率").first()).toBeVisible();
+  await expect(page.getByText("地图核验").first()).toBeVisible();
+  await expect(page.getByText("来源与验证", { exact: true })).toBeVisible();
   await expect(page.getByText("天安门广场").first()).toBeVisible();
 
   await page.reload();

@@ -21,7 +21,7 @@ export function WeatherBadge({ weather }: WeatherBadgeProps) {
     <div className="flex flex-wrap items-center gap-2">
       <Badge
         variant="outline"
-        className="gap-1 rounded-lg border-sky-200 bg-sky-50 text-sky-700"
+        className="gap-1 rounded-lg border-sky-300/20 bg-sky-400/10 text-sky-100"
       >
         <CloudSun className="h-3.5 w-3.5" aria-hidden="true" />
         {weather.condition}
@@ -30,7 +30,7 @@ export function WeatherBadge({ weather }: WeatherBadgeProps) {
       {weather.wind ? (
         <Badge
           variant="outline"
-          className="gap-1 rounded-lg border-zinc-200 bg-white text-zinc-600"
+          className="gap-1 rounded-lg border-white/10 bg-white/[0.04] text-stone-300"
         >
           <Wind className="h-3.5 w-3.5" aria-hidden="true" />
           {weather.wind}

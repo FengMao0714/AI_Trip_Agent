@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, MapPinned, Route, ShieldCheck } from "lucide-react";
 
 import { AMapContainer } from "@/components/map/AMapContainer";
 import { DayFilterBar } from "@/components/map/DayFilterBar";
@@ -8,6 +9,7 @@ import { MarkerPopup } from "@/components/map/MarkerPopup";
 import { POIMarker } from "@/components/map/POIMarker";
 import { RouteLine } from "@/components/map/RouteLine";
 import { useAMap } from "@/hooks/useAMap";
+import { getItineraryInsights } from "@/lib/itineraryInsights";
 import type { Itinerary } from "@/types/itinerary";
 import type { AMapOverlay } from "@/types/amap";
 import type { POIMarker as POIMarkerData, RoutePath } from "@/types/map";
@@ -84,6 +86,7 @@ function createMapLayers(itinerary: Itinerary) {
         rating: activity.rating,
         source: activity.source,
         source_refs: activity.source_refs,
+        is_verified: activity.is_verified,
         time_slot: activity.time_slot,
         type: activity.place_type,
       });
@@ -131,6 +134,7 @@ export function MapView({ itinerary }: MapViewProps) {
     () => createMapLayers(itinerary),
     [itinerary],
   );
+  const insights = useMemo(() => getItineraryInsights(itinerary), [itinerary]);
 
   const visibleMarkers = useMemo(
     () =>
@@ -266,15 +270,42 @@ export function MapView({ itinerary }: MapViewProps) {
   }, [fitVisibleOverlays, map, visibleMarkers.length]);
 
   return (
-    <div className="relative h-full min-h-[480px]">
-      <AMapContainer
-        containerRef={containerRef}
-        error={error}
-        isLoading={isLoading}
-      />
+    <div className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-xl border border-white/10 bg-[#07100f] text-stone-100 shadow-[0_24px_70px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] px-4 py-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-teal-200/80">
+              Map Verification
+            </p>
+            <h3 className="mt-1 text-base font-semibold text-amber-50">
+              行程地图
+            </h3>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 rounded-md bg-teal-400/10 px-2 py-1 font-semibold text-teal-100 ring-1 ring-teal-300/20">
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              {insights.mapVerifiedCount}/{insights.activityCount}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-sky-400/10 px-2 py-1 font-semibold text-sky-100 ring-1 ring-sky-300/20">
+              <Route className="h-3.5 w-3.5" aria-hidden="true" />
+              {routes.length} 段
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/10 px-2 py-1 font-semibold text-amber-100 ring-1 ring-amber-300/20">
+              <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+              缺 {insights.coordinateMissingCount}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="relative min-h-[420px] flex-1">
+        <AMapContainer
+          containerRef={containerRef}
+          error={error}
+          isLoading={isLoading}
+        />
 
-      {!error ? (
-        <>
+        {!error ? (
+          <>
           {visibleRoutes.map((route) => (
             <RouteLine
               key={route.id}
@@ -309,26 +340,27 @@ export function MapView({ itinerary }: MapViewProps) {
             />
           </div>
 
-          <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-white/95 px-3 py-2 text-xs text-zinc-600 shadow-sm ring-1 ring-zinc-200 backdrop-blur">
-            <span className="font-semibold text-zinc-900">
+          <div className="absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-[#07100f]/90 px-3 py-2 text-xs text-stone-400 shadow-lg backdrop-blur">
+            <MapPinned className="mr-1 inline h-3.5 w-3.5 text-teal-300" aria-hidden="true" />
+            <span className="font-semibold text-stone-100">
               {visibleMarkers.length}
             </span>{" "}
             个地点 ·{" "}
-            <span className="font-semibold text-zinc-900">
+            <span className="font-semibold text-stone-100">
               {visibleRoutes.length}
             </span>{" "}
             段路线
           </div>
 
           {visibleMarkers.length === 0 ? (
-            <div className="absolute inset-x-4 top-28 z-10 mx-auto max-w-md rounded-lg border border-amber-200 bg-white/95 px-4 py-3 text-sm leading-6 text-amber-800 shadow-sm backdrop-blur">
+            <div className="absolute inset-x-4 top-28 z-10 mx-auto max-w-md rounded-lg border border-amber-300/25 bg-[#100d06]/95 px-4 py-3 text-sm leading-6 text-amber-100 shadow-lg backdrop-blur">
               <p>
                 {markers.length === 0
                   ? "行程中暂无可用经纬度，地图标注会在 Agent 返回坐标后显示。"
                   : "当前筛选暂无可用经纬度，可切换到其他天查看地图标注。"}
               </p>
               {visibleActivities.length > 0 ? (
-                <div className="mt-2 space-y-1 text-xs text-amber-900">
+                <div className="mt-2 space-y-1 text-xs text-amber-100/90">
                   {visibleActivities.slice(0, 8).map((activity, index) => (
                     <p
                       key={`${activity.day}-${activity.timeSlot}-${activity.name}-${index}`}
@@ -339,7 +371,7 @@ export function MapView({ itinerary }: MapViewProps) {
                     </p>
                   ))}
                   {visibleActivities.length > 8 ? (
-                    <p className="text-amber-700">
+                    <p className="text-amber-200/80">
                       另有 {visibleActivities.length - 8} 个行程点待坐标确认
                     </p>
                   ) : null}
@@ -349,14 +381,14 @@ export function MapView({ itinerary }: MapViewProps) {
           ) : null}
 
           {visibleMarkers.length > 0 ? (
-            <div className="absolute bottom-3 right-3 z-10 max-h-44 w-56 overflow-auto rounded-lg bg-white/95 p-3 text-xs text-zinc-600 shadow-sm ring-1 ring-zinc-200 backdrop-blur">
-              <p className="mb-2 font-semibold text-zinc-900">当前地图点位</p>
+            <div className="absolute bottom-3 right-3 z-10 max-h-44 w-56 overflow-auto rounded-lg border border-white/10 bg-[#07100f]/90 p-3 text-xs text-stone-400 shadow-lg backdrop-blur">
+              <p className="mb-2 font-semibold text-stone-100">当前地图点位</p>
               <div className="space-y-1.5">
                 {visibleMarkers.slice(0, 6).map((marker) => (
                   <button
                     key={marker.id}
                     type="button"
-                    className="block w-full truncate rounded-md px-2 py-1 text-left hover:bg-teal-50 hover:text-teal-800"
+                    className="block w-full truncate rounded-md px-2 py-1 text-left hover:bg-teal-400/10 hover:text-teal-100"
                     onClick={() => setSelectedMarker(marker)}
                     title={marker.name}
                   >
@@ -365,14 +397,15 @@ export function MapView({ itinerary }: MapViewProps) {
                 ))}
               </div>
               {visibleMarkers.length > 6 ? (
-                <p className="mt-2 text-zinc-500">
+                <p className="mt-2 text-stone-500">
                   另有 {visibleMarkers.length - 6} 个地点
                 </p>
               ) : null}
             </div>
           ) : null}
-        </>
-      ) : null}
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

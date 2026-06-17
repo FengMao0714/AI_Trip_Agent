@@ -51,6 +51,21 @@ function getRatingLine(marker: POIMarker) {
   return `评分：${formatRating(marker.rating)}`;
 }
 
+function getVerificationLine(marker: POIMarker) {
+  const sourceText = [marker.source, ...(marker.source_refs ?? [])]
+    .filter(Boolean)
+    .join(" ");
+  if (marker.is_verified === true || /高德|amap|poi/i.test(sourceText)) {
+    return "验证：地图点位已核验";
+  }
+
+  if (marker.is_verified === false) {
+    return "验证：点位待核验";
+  }
+
+  return "验证：未标注";
+}
+
 function hasValidMarkerCoordinates(marker: POIMarker) {
   return (
     Number.isFinite(marker.lng) &&
@@ -71,25 +86,25 @@ export function MarkerPopup({ amap, map, marker }: MarkerPopupProps) {
 
     const content = document.createElement("div");
     content.className =
-      "min-w-56 rounded-lg border border-zinc-200 bg-white p-3 text-zinc-950 shadow-lg";
+      "min-w-56 rounded-lg border border-teal-300/20 bg-[#07100f] p-3 text-stone-100 shadow-2xl";
 
-    appendText(content, "div", marker.name, "text-sm font-semibold");
+    appendText(content, "div", marker.name, "text-sm font-semibold text-amber-50");
     appendText(
       content,
       "div",
       `Day ${marker.day} · ${marker.time_slot ?? "时间待定"} · ${marker.type}`,
-      "mt-1 text-xs text-zinc-500",
+      "mt-1 text-xs text-stone-500",
     );
 
     if (marker.description) {
-      appendText(content, "p", marker.description, "mt-2 line-clamp-3 text-xs leading-5 text-zinc-600");
+      appendText(content, "p", marker.description, "mt-2 line-clamp-3 text-xs leading-5 text-stone-300");
     }
 
     appendText(
       content,
       "div",
       `地址：${marker.address ?? "地址待确认"}`,
-      "mt-2 text-xs leading-5 text-zinc-600",
+      "mt-2 text-xs leading-5 text-stone-400",
     );
     const ratingLine = getRatingLine(marker);
     if (ratingLine) {
@@ -97,9 +112,15 @@ export function MarkerPopup({ amap, map, marker }: MarkerPopupProps) {
         content,
         "div",
         ratingLine,
-        "mt-1 text-xs leading-5 text-zinc-600",
+        "mt-1 text-xs leading-5 text-stone-400",
       );
     }
+    appendText(
+      content,
+      "div",
+      getVerificationLine(marker),
+      "mt-1 text-xs leading-5 text-stone-400",
+    );
 
     if (marker.source) {
       const sourceRefs = formatSourceRefs(marker.source_refs, 2);
@@ -109,7 +130,7 @@ export function MarkerPopup({ amap, map, marker }: MarkerPopupProps) {
         `来源：${formatSourceLabel(marker.source, marker.source_refs)}${
           sourceRefs.length > 0 ? `（参考：${sourceRefs.join("、")}）` : ""
         }`,
-        "mt-1 text-xs leading-5 text-zinc-600",
+        "mt-1 text-xs leading-5 text-stone-400",
       );
     }
 
@@ -117,7 +138,7 @@ export function MarkerPopup({ amap, map, marker }: MarkerPopupProps) {
       content,
       "div",
       `${marker.cost ?? 0} 元`,
-      "mt-3 inline-flex rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700",
+      "mt-3 inline-flex rounded-md border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-100",
     );
 
     const infoWindow = new amap.InfoWindow({

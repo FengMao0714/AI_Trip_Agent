@@ -91,7 +91,7 @@ export function useAMap(
 
           createdMap = new loadedAMap.Map(latestContainer, {
             center: [116.397428, 39.90923],
-            mapStyle: "amap://styles/normal",
+            mapStyle: "amap://styles/darkblue",
             pitch: 30,
             resizeEnable: true,
             viewMode: "3D",

@@ -55,9 +55,15 @@ export interface Activity {
   description: string;
   cost: number;
   address?: string;
+  confidence?: number;
+  indoor?: boolean;
+  opening_hours?: string;
   rating?: number;
+  reservation_required?: boolean;
+  risk_level?: 'low' | 'medium' | 'high';
   source?: string;
   source_refs?: string[];
+  source_url?: string;
   is_verified?: boolean;
   warnings?: string[];
   transport?: Transport;
@@ -66,6 +72,7 @@ export interface Activity {
 export interface DayPlan {
   day: number;
   date: string;
+  risk_summary?: string[];
   weather?: Weather;
   activities: Activity[];
 }
@@ -75,6 +82,7 @@ export interface Itinerary {
   days: DayPlan[];
   total_cost: number;
   budget?: number;
+  quality_score?: number;
   start_date?: string;
   summary?: string;
   generation_source?: GenerationSource;

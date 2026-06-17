@@ -228,6 +228,47 @@ function validateWeatherRisks(itinerary: Itinerary): ItineraryQualityCheck {
   };
 }
 
+function validateSources(itinerary: Itinerary): ItineraryQualityCheck {
+  const activities = itinerary.days.flatMap((day) => day.activities);
+  if (activities.length === 0) {
+    return {
+      id: "sources-empty",
+      title: "来源待生成",
+      detail: "当前还没有活动节点，暂时无法检查来源与验证状态。",
+      status: "risk",
+      severity: "low",
+    };
+  }
+
+  const sourceReadyCount = activities.filter(
+    (activity) => activity.source || (activity.source_refs?.length ?? 0) > 0,
+  ).length;
+  const verifiedCount = activities.filter((activity) => {
+    const sourceText = [activity.source, ...(activity.source_refs ?? [])]
+      .filter(Boolean)
+      .join(" ");
+    return activity.is_verified === true || /高德|amap|poi/i.test(sourceText);
+  }).length;
+  const coverage = sourceReadyCount / activities.length;
+
+  if (coverage < 0.6) {
+    return {
+      id: "sources-low",
+      title: "来源覆盖不足",
+      detail: `已有 ${sourceReadyCount}/${activities.length} 个活动标注来源，建议继续让 Agent 补充 POI、知识库或人工确认依据。`,
+      status: "risk",
+      severity: "medium",
+    };
+  }
+
+  return {
+    id: "sources-ok",
+    title: "来源与验证可追踪",
+    detail: `已有 ${sourceReadyCount}/${activities.length} 个活动标注来源，其中 ${verifiedCount} 个地点具备验证信号。`,
+    status: "pass",
+  };
+}
+
 export function validateItinerary(itinerary: Itinerary): ItineraryQualityCheck[] {
   return [
     validateBudget(itinerary),
@@ -235,5 +276,6 @@ export function validateItinerary(itinerary: Itinerary): ItineraryQualityCheck[]
     ...validateActivityCounts(itinerary),
     validateTransportDurations(itinerary),
     validateWeatherRisks(itinerary),
+    validateSources(itinerary),
   ];
 }

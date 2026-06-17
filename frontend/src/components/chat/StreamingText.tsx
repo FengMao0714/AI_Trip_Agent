@@ -35,7 +35,7 @@ export function StreamingText({ text, isStreaming = false }: StreamingTextProps)
       <ReactMarkdown
         components={{
           h2: ({ children }) => (
-            <h2 className="mb-2 mt-4 text-lg font-semibold text-zinc-950">
+            <h2 className="mb-2 mt-4 text-lg font-semibold text-amber-50">
               {children}
             </h2>
           ),
@@ -44,14 +44,14 @@ export function StreamingText({ text, isStreaming = false }: StreamingTextProps)
             <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>
           ),
           strong: ({ children }) => (
-            <strong className="font-semibold text-zinc-950">{children}</strong>
+            <strong className="font-semibold text-stone-50">{children}</strong>
           ),
         }}
       >
         {visibleText}
       </ReactMarkdown>
       {isStreaming && visibleText.length < text.length ? (
-        <span className="ml-0.5 inline-block h-4 w-1 animate-pulse rounded-full bg-teal-700 align-[-2px]" />
+        <span className="ml-0.5 inline-block h-4 w-1 animate-pulse rounded-full bg-teal-300 align-[-2px]" />
       ) : null}
     </div>
   );

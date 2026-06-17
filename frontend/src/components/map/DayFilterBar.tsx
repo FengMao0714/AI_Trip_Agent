@@ -19,12 +19,12 @@ export function DayFilterBar({
   onSelectedDayChange,
 }: DayFilterBarProps) {
   return (
-    <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-white/95 p-1 shadow-sm ring-1 ring-zinc-200 backdrop-blur">
+    <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-white/10 bg-[#07100f]/90 p-1 shadow-lg backdrop-blur">
       <button
         type="button"
         className={cn(
-          "flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-zinc-600 transition-colors",
-          selectedDay === "all" && "bg-teal-700 text-white",
+          "flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-stone-400 transition-colors",
+          selectedDay === "all" && "bg-teal-400 text-zinc-950",
         )}
         onClick={() => onSelectedDayChange("all")}
       >
@@ -36,8 +36,8 @@ export function DayFilterBar({
           key={day.day}
           type="button"
           className={cn(
-            "h-9 shrink-0 rounded-md px-3 text-sm font-medium text-zinc-600 transition-colors",
-            selectedDay === day.day && "bg-teal-700 text-white",
+            "h-9 shrink-0 rounded-md px-3 text-sm font-medium text-stone-400 transition-colors",
+            selectedDay === day.day && "bg-teal-400 text-zinc-950",
           )}
           onClick={() => onSelectedDayChange(day.day)}
         >

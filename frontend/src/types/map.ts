@@ -17,6 +17,7 @@ export interface POIMarker extends Coordinates {
   rating?: number;
   source?: string;
   source_refs?: string[];
+  is_verified?: boolean;
 }
 
 export interface RoutePath {

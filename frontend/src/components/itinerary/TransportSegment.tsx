@@ -72,12 +72,12 @@ export function TransportSegment({ transport }: TransportSegmentProps) {
     transport.duration_min > 0 ? `${transport.duration_min} 分钟` : "时间待确认";
 
   return (
-    <div className="ml-[4.25rem] flex items-start gap-3 border-l border-dashed border-zinc-300 py-3 pl-5 text-sm text-zinc-500">
-      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
+    <div className="ml-[4.25rem] flex items-start gap-3 border-l border-dashed border-teal-300/25 py-3 pl-5 text-sm text-stone-500">
+      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-stone-300">
         <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="font-medium text-zinc-700">
+        <p className="font-medium text-stone-300">
           {modeLabel} · {distanceLabel} · {durationLabel}
         </p>
         {transport.description ? (

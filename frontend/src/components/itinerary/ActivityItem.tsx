@@ -6,14 +6,17 @@ import {
   AlertTriangle,
   BedDouble,
   BookOpen,
+  Clock3,
   CheckCircle2,
   Coffee,
+  ExternalLink,
   Footprints,
   Landmark,
   MapPin,
   PencilLine,
   RefreshCw,
   SendHorizonal,
+  ShieldCheck,
   Soup,
   Star,
   TrainFront,
@@ -46,11 +49,11 @@ const typeIcon: Record<ActivityType, typeof MapPin> = {
 };
 
 const typeColor: Record<ActivityType, string> = {
-  景点: "bg-sky-50 text-sky-700 ring-sky-100",
-  餐厅: "bg-amber-50 text-amber-700 ring-amber-100",
-  住宿: "bg-violet-50 text-violet-700 ring-violet-100",
-  交通: "bg-teal-50 text-teal-700 ring-teal-100",
-  其他: "bg-zinc-50 text-zinc-700 ring-zinc-100",
+  景点: "bg-sky-400/10 text-sky-200 ring-sky-300/20",
+  餐厅: "bg-amber-400/10 text-amber-200 ring-amber-300/20",
+  住宿: "bg-violet-400/10 text-violet-200 ring-violet-300/20",
+  交通: "bg-teal-400/10 text-teal-200 ring-teal-300/20",
+  其他: "bg-white/[0.06] text-stone-300 ring-white/10",
 };
 
 interface ConfidenceBadge {
@@ -90,6 +93,40 @@ function hasRating(rating?: number): rating is number {
 function formatRating(rating?: number) {
   return hasRating(rating) ? `${rating.toFixed(1)} 分` : "评分待确认";
 }
+
+function getActivityConfidence(activity: Activity, warnings: string[]) {
+  if (typeof activity.confidence === "number" && Number.isFinite(activity.confidence)) {
+    return Math.max(0, Math.min(100, Math.round(activity.confidence)));
+  }
+
+  let score = 88;
+  if (!hasValidCoordinates(activity)) {
+    score -= 18;
+  }
+  if (!activity.source && activity.is_verified !== true) {
+    score -= 10;
+  }
+  if (activity.is_verified === true) {
+    score += 6;
+  }
+  if (!hasRating(activity.rating) && activity.place_type !== "交通") {
+    score -= 4;
+  }
+  score -= Math.min(24, warnings.length * 5);
+  return Math.max(45, Math.min(98, score));
+}
+
+const riskClassName: Record<NonNullable<Activity["risk_level"]>, string> = {
+  low: "bg-sky-400/10 text-sky-200 ring-sky-300/20",
+  medium: "bg-amber-400/10 text-amber-200 ring-amber-300/20",
+  high: "bg-red-500/10 text-red-200 ring-red-400/20",
+};
+
+const riskLabel: Record<NonNullable<Activity["risk_level"]>, string> = {
+  low: "低风险",
+  medium: "需注意",
+  high: "高风险",
+};
 
 function inferActivityType(activity: Activity): ActivityType {
   if (activity.place_type !== "其他") {
@@ -204,7 +241,7 @@ function getConfidenceBadges(
 
     badges.push({
       label,
-      className: "bg-amber-50 text-amber-700 ring-amber-100",
+      className: "bg-amber-400/10 text-amber-200 ring-amber-300/20",
       icon: AlertTriangle,
       title,
     });
@@ -213,7 +250,7 @@ function getConfidenceBadges(
   if (hasVerifiedSource) {
     badges.push({
       label: activityType === "交通" ? "站点已验证" : "地点已验证",
-      className: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+      className: "bg-emerald-400/10 text-emerald-200 ring-emerald-300/20",
       icon: CheckCircle2,
     });
   }
@@ -221,7 +258,7 @@ function getConfidenceBadges(
   if (hasTrustedKnowledgeSource(activity.source, activity.source_refs)) {
     badges.push({
       label: "本地知识库推荐",
-      className: "bg-sky-50 text-sky-700 ring-sky-100",
+      className: "bg-sky-400/10 text-sky-200 ring-sky-300/20",
       icon: BookOpen,
     });
   }
@@ -271,7 +308,7 @@ function getConfidenceBadges(
   if (badges.length === 0 && activity.source) {
     badges.push({
       label: "来源已标注",
-      className: "bg-zinc-50 text-zinc-700 ring-zinc-100",
+      className: "bg-white/[0.06] text-stone-300 ring-white/10",
       icon: BookOpen,
     });
   }
@@ -332,6 +369,7 @@ export function ActivityItem({
   const activityType = inferActivityType(activity);
   const Icon = typeIcon[activityType];
   const warnings = getWarnings(activity, activityType);
+  const confidence = getActivityConfidence(activity, warnings);
   const warningLabels = displayWarnings(warnings, activityType);
   const confidenceBadges = getConfidenceBadges(activity, activityType, warnings);
   const sourceRefs = formatSourceRefs(activity.source_refs, 2);
@@ -365,7 +403,7 @@ export function ActivityItem({
 
   return (
     <div className="grid grid-cols-[5rem_1.75rem_minmax(0,1fr)] gap-3">
-      <time className="break-words pt-1 text-xs font-medium leading-5 text-zinc-500">
+      <time className="break-words pt-1 text-xs font-medium leading-5 text-stone-500">
         {activity.time_slot}
       </time>
       <div className="flex flex-col items-center">
@@ -374,15 +412,29 @@ export function ActivityItem({
         >
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
-        <span className="mt-2 h-full min-h-6 w-px bg-zinc-200" />
+        <span className="mt-2 h-full min-h-6 w-px bg-teal-300/25" />
       </div>
-      <div className="min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-teal-300/30 hover:bg-white/[0.065]">
+        <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-white/[0.045] px-2 py-1 text-xs font-semibold text-stone-300 ring-1 ring-white/10">
+            <ShieldCheck className="h-3.5 w-3.5 text-teal-300" aria-hidden="true" />
+            置信度 {confidence}
+          </span>
+          {activity.risk_level ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ring-1 ${riskClassName[activity.risk_level]}`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+              {riskLabel[activity.risk_level]}
+            </span>
+          ) : null}
+        </div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h4 className="truncate text-base font-semibold text-zinc-950">
+            <h4 className="truncate text-base font-semibold text-stone-50">
               {activity.place_name}
             </h4>
-            <p className="mt-1 text-sm text-zinc-500">{activityType}</p>
+            <p className="mt-1 text-sm text-stone-500">{activityType}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {confidenceBadges.map((badge) => {
                 const BadgeIcon = badge.icon;
@@ -401,38 +453,65 @@ export function ActivityItem({
           </div>
           <CostBadge cost={activity.cost} />
         </div>
-        <p className="mt-3 text-sm leading-6 text-zinc-600">
+        <p className="mt-3 text-sm leading-6 text-stone-300">
           {activity.description}
         </p>
-        <div className="mt-3 grid gap-2 text-xs leading-5 text-zinc-600">
+        <div className="mt-3 grid gap-2 text-xs leading-5 text-stone-400">
           <div className="flex min-w-0 items-start gap-2">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true" />
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-500" aria-hidden="true" />
             <span className="min-w-0 break-words">
               {addressLabel}：{activity.address ?? `${addressLabel}待确认`}
             </span>
           </div>
           {needsPoiRating(activityType) ? (
             <div className="flex min-w-0 items-start gap-2">
-              <Star className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true" />
+              <Star className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-500" aria-hidden="true" />
               <span>评分：{formatRating(activity.rating)}</span>
             </div>
           ) : null}
+          {activity.opening_hours ? (
+            <div className="flex min-w-0 items-start gap-2">
+              <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-500" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                营业/开放：{activity.opening_hours}
+              </span>
+            </div>
+          ) : null}
+          {activity.reservation_required !== undefined ? (
+            <div className="flex min-w-0 items-start gap-2">
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-500" aria-hidden="true" />
+              <span>
+                预约：{activity.reservation_required ? "建议提前预约" : "暂不要求预约"}
+              </span>
+            </div>
+          ) : null}
           <div className="flex min-w-0 items-start gap-2">
-            <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true" />
+            <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-500" aria-hidden="true" />
             <span className="min-w-0 break-words">
               {sourceLabelPrefix}：{formattedSourceLabel}
               {sourceRefs.length > 0 ? `（参考：${sourceRefs.join("、")}）` : ""}
             </span>
           </div>
+          {activity.source_url ? (
+            <a
+              href={activity.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-fit items-center gap-1 rounded-md border border-teal-300/20 bg-teal-400/10 px-2 py-1 text-xs font-medium text-teal-100 hover:bg-teal-400/15"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              查看来源链接
+            </a>
+          ) : null}
         </div>
         {warningLabels.length > 0 ? (
-          <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 ring-1 ring-amber-100">
+          <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100 ring-1 ring-amber-300/20">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{warningLabels.slice(0, 3).join("；")}</span>
           </div>
         ) : null}
         {onQuickAdjust ? (
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-zinc-100 pt-3">
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
             {quickActions.map((item) => {
               const ActionIcon = item.icon;
               return (
@@ -440,7 +519,7 @@ export function ActivityItem({
                   key={item.action}
                   type="button"
                   disabled={isQuickAdjustDisabled}
-                  className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-stone-300 transition-colors hover:border-teal-300/30 hover:bg-teal-400/10 hover:text-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() =>
                     onQuickAdjust(
                       buildQuickAdjustInstruction(item.action, dayNumber, activity),
@@ -455,7 +534,7 @@ export function ActivityItem({
             <button
               type="button"
               disabled={isQuickAdjustDisabled}
-              className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-stone-300 transition-colors hover:border-teal-300/30 hover:bg-teal-400/10 hover:text-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
               aria-expanded={isCustomAdjustOpen}
               onClick={() => setIsCustomAdjustOpen((isOpen) => !isOpen)}
             >
@@ -470,7 +549,7 @@ export function ActivityItem({
               value={customAdjustText}
               disabled={isQuickAdjustDisabled}
               rows={2}
-              className="min-h-16 resize-none rounded-lg text-sm"
+              className="min-h-16 resize-none rounded-lg border-white/10 bg-[#0b1313] text-sm text-stone-100 placeholder:text-stone-500"
               placeholder="例如：换成适合看日落的地方"
               onChange={(event) => setCustomAdjustText(event.target.value)}
             />
@@ -478,7 +557,7 @@ export function ActivityItem({
               <button
                 type="submit"
                 disabled={isQuickAdjustDisabled || !customInstruction}
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md bg-teal-700 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md bg-teal-400 px-3 py-1 text-xs font-semibold text-zinc-950 transition-colors hover:bg-teal-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <SendHorizonal className="h-3.5 w-3.5" aria-hidden="true" />
                 发送微调

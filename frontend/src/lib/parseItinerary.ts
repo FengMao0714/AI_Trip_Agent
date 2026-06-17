@@ -160,6 +160,27 @@ function asBoolean(value: unknown) {
   return undefined;
 }
 
+function normalizeRiskLevel(value: unknown): Activity["risk_level"] {
+  const raw = asString(value).toLowerCase();
+  if (["low", "medium", "high"].includes(raw)) {
+    return raw as Activity["risk_level"];
+  }
+
+  if (["低", "提示", "轻微"].includes(raw)) {
+    return "low";
+  }
+
+  if (["中", "注意", "中等"].includes(raw)) {
+    return "medium";
+  }
+
+  if (["高", "重点", "严重"].includes(raw)) {
+    return "high";
+  }
+
+  return undefined;
+}
+
 function asStringArray(value: unknown) {
   if (Array.isArray(value)) {
     return value.map((item) => asString(item)).filter(Boolean);
@@ -291,8 +312,29 @@ function parseActivity(input: unknown, index: number): Activity | null {
     pick(input, ["address", "addr", "formatted_address", "formattedAddress"]),
   );
   const rating = asOptionalNumber(pick(input, ["rating", "score", "stars"]));
+  const confidence = asOptionalNumber(
+    pick(input, ["confidence", "confidence_score", "confidenceScore"]),
+  );
+  const indoor = asBoolean(pick(input, ["indoor", "is_indoor", "isIndoor"]));
+  const openingHours = asString(
+    pick(input, ["opening_hours", "openingHours", "hours"]),
+  );
+  const reservationRequired = asBoolean(
+    pick(input, [
+      "reservation_required",
+      "reservationRequired",
+      "needs_reservation",
+      "needsReservation",
+    ]),
+  );
+  const riskLevel = normalizeRiskLevel(
+    pick(input, ["risk_level", "riskLevel", "risk"]),
+  );
   const source = asString(
     pick(input, ["source", "source_desc", "sourceDescription", "source_type", "sourceType"]),
+  );
+  const sourceUrl = asString(
+    pick(input, ["source_url", "sourceUrl", "url", "reference_url", "referenceUrl"]),
   );
   const sourceRefs = asStringArray(
     pick(input, ["source_refs", "sourceRefs", "references", "refs"]),
@@ -323,8 +365,16 @@ function parseActivity(input: unknown, index: number): Activity | null {
     description,
     cost: asNumber(pick(input, ["cost", "price", "fee"])),
     ...(address ? { address } : {}),
+    ...(confidence !== undefined ? { confidence } : {}),
+    ...(indoor !== undefined ? { indoor } : {}),
+    ...(openingHours ? { opening_hours: openingHours } : {}),
     ...(rating !== undefined && rating > 0 ? { rating } : {}),
+    ...(reservationRequired !== undefined
+      ? { reservation_required: reservationRequired }
+      : {}),
+    ...(riskLevel ? { risk_level: riskLevel } : {}),
     ...(source ? { source } : {}),
+    ...(sourceUrl ? { source_url: sourceUrl } : {}),
     ...(sourceRefs.length > 0 ? { source_refs: sourceRefs } : {}),
     ...(isVerified !== undefined ? { is_verified: isVerified } : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
@@ -344,11 +394,15 @@ function parseDay(input: unknown, index: number): DayPlan | null {
         .filter((activity): activity is Activity => activity !== null)
     : [];
   const weather = parseWeather(input.weather);
+  const riskSummary = asStringArray(
+    pick(input, ["risk_summary", "riskSummary", "risks", "alerts"]),
+  );
 
   return {
     day: asNumber(input.day, index + 1),
     date: asString(input.date, `第 ${index + 1} 天`),
     activities,
+    ...(riskSummary.length > 0 ? { risk_summary: riskSummary } : {}),
     ...(weather ? { weather } : {}),
   };
 }
@@ -407,6 +461,9 @@ export function parseItinerary(input: unknown): Itinerary | null {
   );
   const summary = asString(payload.summary);
   const budgetValue = pick(payload, ["budget", "total_budget", "totalBudget"]);
+  const qualityScore = asOptionalNumber(
+    pick(payload, ["quality_score", "qualityScore", "score"]),
+  );
   const totalCostValue = pick(payload, ["total_cost", "totalCost", "cost"]);
   const startDate = asString(
     pick(payload, ["start_date", "startDate", "trip_start_date", "tripStartDate"]),
@@ -420,6 +477,7 @@ export function parseItinerary(input: unknown): Itinerary | null {
     days,
     total_cost: asNumber(totalCostValue, computedTotal),
     ...(budgetValue !== undefined ? { budget: asNumber(budgetValue) } : {}),
+    ...(qualityScore !== undefined ? { quality_score: qualityScore } : {}),
     ...(startDate ? { start_date: startDate } : {}),
     ...(summary ? { summary } : {}),
     ...(generationSource ? { generation_source: generationSource } : {}),

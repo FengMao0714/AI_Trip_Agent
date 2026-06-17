@@ -42,14 +42,23 @@ export function ItineraryView({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-200/80">
+            Generated Travel Plan
+          </p>
+          <p className="mt-1 text-sm text-stone-400">
+            可导出、可微调、可地图核验的行程成果包
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
         {showDetailLink && detailHref ? (
           <Button
             asChild
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-lg"
+            className="rounded-lg border-white/10 bg-white/[0.04] text-stone-200 hover:bg-white/10 hover:text-stone-50"
           >
             <Link href={detailHref}>
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -58,6 +67,7 @@ export function ItineraryView({
           </Button>
         ) : null}
         <ExportDialog itinerary={itinerary} />
+        </div>
       </div>
       <TripSummaryCard itinerary={itinerary} />
       <QualityPanel checks={qualityChecks} />

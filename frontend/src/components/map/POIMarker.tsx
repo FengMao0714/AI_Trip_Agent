@@ -18,18 +18,18 @@ interface POIMarkerProps {
 }
 
 const markerColor: Record<ActivityType, string> = {
-  景点: "bg-sky-600",
-  餐厅: "bg-amber-500",
-  住宿: "bg-violet-600",
-  交通: "bg-teal-600",
-  其他: "bg-zinc-600",
+  景点: "bg-sky-500",
+  餐厅: "bg-amber-400 text-zinc-950",
+  住宿: "bg-violet-500",
+  交通: "bg-teal-400 text-zinc-950",
+  其他: "bg-stone-500",
 };
 
 function getMarkerClassName(type: ActivityType, active: boolean) {
   return [
-    "flex h-8 w-8 items-center justify-center rounded-lg border-2 border-white text-xs font-bold text-white shadow-lg transition-transform",
+    "flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 text-xs font-bold text-white shadow-[0_0_26px_rgba(45,212,191,0.35)] transition-transform",
     markerColor[type],
-    active ? "scale-110 ring-4 ring-teal-200" : "",
+    active ? "scale-110 ring-4 ring-teal-300/35" : "",
   ].join(" ");
 }
 
