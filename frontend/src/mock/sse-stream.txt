@@ -1,0 +1,38 @@
+event: thinking
+data: {"step":"正在分析您的目的地、天数、预算和偏好..."}
+
+event: tool_call
+data: {"tool":"poi_search","args":{"city":"北京","keyword":"历史文化景点","limit":8}}
+
+event: tool_result
+data: {"tool":"poi_search","result":{"count":8,"top_results":["故宫博物院","天坛公园","中国国家博物馆","八达岭长城","颐和园"]}}
+
+event: thinking
+data: {"step":"正在根据景点位置安排每天的游览顺序..."}
+
+event: tool_call
+data: {"tool":"route_plan","args":{"origin":"故宫博物院","destination":"景山公园","mode":"步行"}}
+
+event: tool_result
+data: {"tool":"route_plan","result":{"mode":"步行","distance_km":0.8,"duration_min":12}}
+
+event: tool_call
+data: {"tool":"weather","args":{"city":"北京","days":7}}
+
+event: tool_result
+data: {"tool":"weather","result":{"city":"北京","forecast_dates":["2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11","2026-05-12","2026-05-13"]}}
+
+event: content
+data: {"text":"根据你的预算和历史文化偏好，我为你安排了一条北京 3 天游路线。"}
+
+event: content
+data: {"text":"整体节奏是第一天集中在故宫中轴线和什刹海，第二天走天坛、前门、国博和王府井，第三天安排长城与颐和园。"}
+
+event: content
+data: {"text":"预估总花费约 1698 元，不含往返北京的大交通，低于 3000 元预算，留有较充足机动空间。"}
+
+event: itinerary
+data: {"itinerary":{"destination":"北京","budget":3000,"total_cost":1698,"summary":"北京 3 天游，面向喜欢历史文化、预算约 3000 元且希望节奏适中的自由行用户。费用为单人预估，包含景点门票、市内交通、餐饮与两晚住宿，不含往返北京的大交通。","days":[{"day":1,"date":"2026-05-08","weather":{"condition":"晴","temperature_min":16,"temperature_max":28,"wind":"西南风 2 级","advice":"紫外线较强，故宫与景山步行时间长，建议带遮阳帽和水。"},"activities":[{"time_slot":"09:00-11:30","place_name":"故宫博物院","place_type":"景点","lng":116.397026,"lat":39.918058,"description":"从午门进入，重点游览太和殿、中和殿、保和殿与珍宝馆，适合开启北京历史文化主题行程。","cost":60},{"time_slot":"11:45-12:45","place_name":"四季民福烤鸭店（故宫店）","place_type":"餐厅","lng":116.404102,"lat":39.915392,"description":"故宫附近口碑较稳的北京烤鸭餐厅，午餐建议提前取号或错峰到店。","cost":140,"transport":{"mode":"步行","distance_km":1.1,"duration_min":15,"description":"从故宫神武门出园后步行至餐厅。"}},{"time_slot":"13:15-15:00","place_name":"景山公园","place_type":"景点","lng":116.396541,"lat":39.925073,"description":"登万春亭俯瞰故宫中轴线，是理解北京城市格局的高性价比观景点。","cost":2,"transport":{"mode":"步行","distance_km":0.8,"duration_min":12,"description":"从餐厅步行回到景山南门附近。"}},{"time_slot":"15:30-17:00","place_name":"什刹海","place_type":"景点","lng":116.385307,"lat":39.941853,"description":"沿前海、后海慢走，顺路看银锭桥和胡同肌理，下午光线适合拍照。","cost":0,"transport":{"mode":"打车","distance_km":4.2,"duration_min":18,"description":"从景山北门打车到什刹海，减少午后步行疲劳。"}},{"time_slot":"18:00-19:30","place_name":"烤肉季（什刹海店）","place_type":"餐厅","lng":116.382729,"lat":39.940857,"description":"老字号清真烤肉，适合作为第一晚的北京风味晚餐。","cost":120,"transport":{"mode":"步行","distance_km":0.9,"duration_min":12,"description":"从什刹海沿湖步行抵达。"}},{"time_slot":"20:00-次日","place_name":"北京东四胡同民宿","place_type":"住宿","lng":116.421539,"lat":39.929318,"description":"靠近地铁 5 号线与 6 号线，方便第二天前往天坛、前门与王府井。","cost":420,"transport":{"mode":"打车","distance_km":5.5,"duration_min":20,"description":"晚间从什刹海打车回东四住宿。"}}]},{"day":2,"date":"2026-05-09","weather":{"condition":"多云","temperature_min":17,"temperature_max":27,"wind":"南风 2 级","advice":"适合城市步行，上午安排天坛，下午转入博物馆和商业街，体力分配更均衡。"},"activities":[{"time_slot":"08:30-10:30","place_name":"天坛公园","place_type":"景点","lng":116.410829,"lat":39.881913,"description":"游览祈年殿、回音壁和圜丘，感受明清祭天建筑与北京南城生活气息。","cost":34,"transport":{"mode":"地铁","distance_km":8.5,"duration_min":35,"description":"从东四乘地铁 5 号线到天坛东门站。"}},{"time_slot":"11:00-12:00","place_name":"前门大街","place_type":"景点","lng":116.397848,"lat":39.895835,"description":"沿前门大街看老字号招牌与民国风格街区，适合轻松过渡到午餐。","cost":0,"transport":{"mode":"公交","distance_km":3.2,"duration_min":18,"description":"从天坛西门乘公交或打车到前门。"}},{"time_slot":"12:15-13:15","place_name":"都一处烧麦馆（前门店）","place_type":"餐厅","lng":116.397131,"lat":39.897472,"description":"北京老字号，烧麦和家常热菜选择多，口味相对稳妥。","cost":85,"transport":{"mode":"步行","distance_km":0.4,"duration_min":6,"description":"从前门大街步行抵达。"}},{"time_slot":"14:00-16:00","place_name":"中国国家博物馆","place_type":"景点","lng":116.401177,"lat":39.905341,"description":"建议提前预约，重点看古代中国基本陈列，与故宫和天坛形成历史线索串联。","cost":0,"transport":{"mode":"步行","distance_km":1.1,"duration_min":15,"description":"从前门步行至天安门广场东侧入口。"}},{"time_slot":"16:30-17:30","place_name":"王府井步行街","place_type":"景点","lng":116.411376,"lat":39.913184,"description":"傍晚在王府井短暂停留，补给、买伴手礼，也可根据体力缩短。","cost":0,"transport":{"mode":"地铁","distance_km":3.8,"duration_min":20,"description":"从天安门东站乘 1 号线到王府井站。"}},{"time_slot":"18:00-19:30","place_name":"局气（王府井店）","place_type":"餐厅","lng":116.411628,"lat":39.912068,"description":"适合体验北京家常菜和创意京味点心，人均价格适中。","cost":100,"transport":{"mode":"步行","distance_km":0.3,"duration_min":5,"description":"从王府井步行街步行抵达。"}},{"time_slot":"20:00-次日","place_name":"北京东四胡同民宿","place_type":"住宿","lng":116.421539,"lat":39.929318,"description":"继续入住同一民宿，避免搬运行李，第三天早起去长城更方便。","cost":420,"transport":{"mode":"地铁","distance_km":3.7,"duration_min":22,"description":"从王府井乘地铁或打车回东四。"}}]},{"day":3,"date":"2026-05-10","weather":{"condition":"晴转多云","temperature_min":18,"temperature_max":29,"wind":"西北风 3 级","advice":"长城风大且日晒明显，建议穿防滑鞋，携带外套和防晒用品。"},"activities":[{"time_slot":"07:30-09:10","place_name":"清河站","place_type":"交通","lng":116.31472,"lat":40.041073,"description":"从市区前往八达岭长城的中转点，建议提前购买市郊铁路或高铁车票。","cost":32,"transport":{"mode":"地铁","distance_km":18.6,"duration_min":45,"description":"从东四出发，经地铁换乘到清河站。"}},{"time_slot":"09:30-12:00","place_name":"八达岭长城","place_type":"景点","lng":116.016802,"lat":40.356548,"description":"选择北一楼到北四楼区间，兼顾代表性和体力消耗，避开过度赶路。","cost":40,"transport":{"mode":"公交","distance_km":61.5,"duration_min":78,"description":"从清河站乘市郊铁路或高铁到八达岭长城站，再步行或接驳。"}},{"time_slot":"12:15-13:15","place_name":"岔道古城农家菜","place_type":"餐厅","lng":116.000821,"lat":40.360911,"description":"长城附近简餐，以家常菜和面食为主，补充体力后返城。","cost":80,"transport":{"mode":"步行","distance_km":1.4,"duration_min":18,"description":"从长城出口步行或短途接驳到岔道古城附近。"}},{"time_slot":"15:00-17:00","place_name":"颐和园","place_type":"景点","lng":116.273469,"lat":39.999771,"description":"返城后游览昆明湖和长廊，作为皇家园林主题的收尾，若体力不足可改为咖啡馆休息。","cost":30,"transport":{"mode":"打车","distance_km":58.4,"duration_min":75,"description":"从八达岭区域返城后打车或换乘地铁前往颐和园。"}},{"time_slot":"18:00-19:15","place_name":"海碗居（增光路店）","place_type":"餐厅","lng":116.330519,"lat":39.930659,"description":"用炸酱面和老北京小吃结束行程，价格友好，适合返程前晚餐。","cost":90,"transport":{"mode":"打车","distance_km":12.6,"duration_min":35,"description":"从颐和园打车到餐厅，避开晚高峰可缩短时间。"}},{"time_slot":"20:00-20:45","place_name":"北京南站","place_type":"交通","lng":116.379008,"lat":39.865008,"description":"预留返程进站时间，如继续住宿可把该段替换为回酒店休息。","cost":45,"transport":{"mode":"地铁","distance_km":13.2,"duration_min":42,"description":"从餐厅附近乘地铁或打车前往北京南站。"}}]}]}}
+
+event: done
+data: {}

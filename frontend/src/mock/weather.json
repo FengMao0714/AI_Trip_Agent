@@ -1,0 +1,94 @@
+{
+  "status": "1",
+  "info": "OK",
+  "infocode": "10000",
+  "city": "北京",
+  "adcode": "110000",
+  "generated_at": "2026-05-06T09:00:00+08:00",
+  "forecasts": [
+    {
+      "date": "2026-05-07",
+      "week": "周四",
+      "day_weather": "晴",
+      "night_weather": "晴",
+      "temperature_min": 15,
+      "temperature_max": 27,
+      "wind_direction": "西南",
+      "wind_power": "2级",
+      "humidity": 32,
+      "advice": "天气干燥，适合户外游览，注意补水。"
+    },
+    {
+      "date": "2026-05-08",
+      "week": "周五",
+      "day_weather": "晴",
+      "night_weather": "晴",
+      "temperature_min": 16,
+      "temperature_max": 28,
+      "wind_direction": "西南",
+      "wind_power": "2级",
+      "humidity": 34,
+      "advice": "适合故宫、景山等户外行程，午后注意防晒。"
+    },
+    {
+      "date": "2026-05-09",
+      "week": "周六",
+      "day_weather": "多云",
+      "night_weather": "多云",
+      "temperature_min": 17,
+      "temperature_max": 27,
+      "wind_direction": "南",
+      "wind_power": "2级",
+      "humidity": 40,
+      "advice": "云量增加但降雨概率低，适合城市步行和博物馆行程。"
+    },
+    {
+      "date": "2026-05-10",
+      "week": "周日",
+      "day_weather": "晴转多云",
+      "night_weather": "多云",
+      "temperature_min": 18,
+      "temperature_max": 29,
+      "wind_direction": "西北",
+      "wind_power": "3级",
+      "humidity": 35,
+      "advice": "长城区域风力略大，建议穿防滑鞋并带轻薄外套。"
+    },
+    {
+      "date": "2026-05-11",
+      "week": "周一",
+      "day_weather": "阴",
+      "night_weather": "小雨",
+      "temperature_min": 16,
+      "temperature_max": 24,
+      "wind_direction": "东南",
+      "wind_power": "2级",
+      "humidity": 58,
+      "advice": "傍晚可能有雨，适合安排室内展馆或商场。"
+    },
+    {
+      "date": "2026-05-12",
+      "week": "周二",
+      "day_weather": "小雨转多云",
+      "night_weather": "多云",
+      "temperature_min": 15,
+      "temperature_max": 23,
+      "wind_direction": "东北",
+      "wind_power": "2级",
+      "humidity": 62,
+      "advice": "上午备伞，户外景点建议放到下午。"
+    },
+    {
+      "date": "2026-05-13",
+      "week": "周三",
+      "day_weather": "晴",
+      "night_weather": "晴",
+      "temperature_min": 16,
+      "temperature_max": 26,
+      "wind_direction": "西",
+      "wind_power": "2级",
+      "humidity": 36,
+      "advice": "天气转好，适合补拍户外景点。"
+    }
+  ]
+}
