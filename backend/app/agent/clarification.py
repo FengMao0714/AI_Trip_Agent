@@ -40,13 +40,12 @@ class ClarificationAgent:
         elif invalid_messages:
             correction_text = invalid_text
         else:
-            correction_text = f"还需要你补充 {len(question_items)} 个信息: {question_text}"
+            correction_text = (
+                f"还需要你补充 {len(question_items)} 个信息: {question_text}"
+            )
 
         if known_summary:
-            return (
-                f"可以，我会按“{known_summary}”来规划。"
-                f"{correction_text}。"
-            )
+            return f"可以，我会按“{known_summary}”来规划。{correction_text}。"
 
         return f"可以，我先帮你把需求框起来。{correction_text}。"
 
