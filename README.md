@@ -92,6 +92,41 @@ Important variables:
 | `NEXT_PUBLIC_USE_MOCK` | frontend | Use mock responses for frontend demos. |
 | `DEMO_MODE` | backend | Enable deterministic demo fallback itinerary generation. |
 
+## Quick Demo
+
+For portfolio review, run the deterministic demo path first. It avoids external LLM instability while still exercising the backend, SSE stream, session persistence, itinerary parsing, and frontend rendering.
+
+```powershell
+docker compose up -d postgres redis
+
+cd backend
+$env:POSTGRES_HOST = "localhost"
+$env:POSTGRES_PORT = "15432"
+$env:REDIS_HOST = "localhost"
+$env:REDIS_PORT = "16379"
+$env:DEMO_MODE = "true"
+$env:DEMO_FALLBACK_ENABLED = "true"
+$env:PRELOAD_EMBEDDING_MODEL = "false"
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+In a second terminal:
+
+```powershell
+cd frontend
+$env:NEXT_PUBLIC_API_URL = "http://127.0.0.1:8000"
+$env:API_INTERNAL_URL = "http://127.0.0.1:8000"
+corepack pnpm dev
+```
+
+Open [http://localhost:3000/chat](http://localhost:3000/chat) and try:
+
+```text
+我和父母去北京玩3天，预算1万元，喜欢历史文化
+```
+
+Expected result: the backend streams planning events, normalizes the travel request, and returns a runnable Beijing itinerary. If no real LLM key is configured, `DEMO_MODE=true` keeps the demo stable through the deterministic fallback itinerary.
+
 ## Local Development
 
 Start infrastructure:
@@ -130,6 +165,26 @@ On Windows, the helper script can start PostgreSQL, Redis, backend, and frontend
 ```
 
 The helper enables `http://127.0.0.1:10808` for network downloads by default while keeping `token-plan-cn.xiaomimimo.com` in `NO_PROXY` for direct LLM calls. Pass `-NoProxy` only when no proxy is needed.
+
+## Demo Mode
+
+`DEMO_MODE=true` is intended for public demos, interviews, and offline review. It keeps the user-facing flow stable when an external LLM, map, weather, or POI provider is unavailable. The backend still validates structured requirements, streams SSE events, stores session context in Redis, and returns a complete itinerary shape that the frontend renders normally.
+
+Use live mode for production-like testing:
+
+```powershell
+$env:DEMO_MODE = "false"
+$env:DEEPSEEK_API_KEY = "<your-key>"
+$env:AMAP_API_KEY = "<your-key>"
+```
+
+Use mock mode only when testing the frontend without a backend:
+
+```powershell
+cd frontend
+$env:NEXT_PUBLIC_USE_MOCK = "true"
+corepack pnpm dev
+```
 
 ## Docker
 
@@ -175,16 +230,21 @@ corepack pnpm test:e2e
 
 ## Screenshots
 
-The public repository currently keeps source assets only. Add current product screenshots under `Docs/images/` before publishing the GitHub README, for example:
+Current screenshots are generated from the local app and kept under `Docs/images/`.
 
-- Landing page desktop screenshot.
-- Chat planning workspace screenshot.
-- Itinerary and map visualization screenshot.
+![Landing page desktop screenshot](Docs/images/landing-desktop.png)
+
+![Chat planning workspace screenshot](Docs/images/chat-workspace.png)
+
+![Itinerary and map visualization screenshot](Docs/images/itinerary-map.png)
+
+## Encoding
+
+All source files and documentation are UTF-8. The repository includes `.editorconfig` and `.gitattributes` so editors and Git keep Chinese UI copy readable. On Windows PowerShell 5, use `Get-Content -Encoding UTF8 <file>` when manually inspecting files that contain Chinese text.
 
 ## Roadmap
 
 - Add production deployment profiles for frontend and backend.
-- Add a small public screenshot set and demo GIF.
 - Improve observability around agent tool calls and slow external APIs.
 - Add stricter fixture-based tests for itinerary validation and map data.
 - Add optional authentication if itineraries become user-specific persistent data.
