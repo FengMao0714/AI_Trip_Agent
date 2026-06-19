@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Compass, History, Plus, Radio } from "lucide-react";
+import { Compass, Plus, Radio } from "lucide-react";
 
 import { SessionManagerDialog } from "@/components/layout/SessionManagerDialog";
 import { Button } from "@/components/ui/button";
@@ -64,10 +64,6 @@ export function ChatHeader({
           onNewSession={onNewSession}
           onSelectSession={onSelectSession}
         />
-        <span className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-medium text-stone-300 sm:inline-flex">
-          <History className="h-4 w-4" aria-hidden="true" />
-          历史
-        </span>
         <Button
           type="button"
           variant="outline"

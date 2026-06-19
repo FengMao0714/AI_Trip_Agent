@@ -1,14 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import {
-  CalendarDays,
-  Loader2,
-  MapPin,
-  SendHorizontal,
-  SlidersHorizontal,
-  WalletCards,
-} from "lucide-react";
+import { Loader2, SendHorizontal } from "lucide-react";
 
 import { QuickPrompts } from "@/components/chat/QuickPrompts";
 import { Button } from "@/components/ui/button";
@@ -47,35 +40,8 @@ export function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="min-w-0 border-t border-white/10 bg-[#07100f]/95 p-3 shadow-[0_-18px_50px_rgba(0,0,0,0.32)] sm:p-4"
+      className="min-w-0 border-t border-white/10 bg-[#07100f]/95 p-3 shadow-[0_-18px_50px_rgba(0,0,0,0.32)]"
     >
-      <div className="mb-3 flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-amber-50">规划控制台</p>
-          <p className="mt-1 text-xs leading-5 text-stone-400">
-            一句话写清目的地、天数、预算、同行人和偏好，Agent 会保留上下文做局部微调。
-          </p>
-        </div>
-        <div className="grid grid-cols-4 gap-1.5 text-xs text-stone-400 sm:flex">
-          {[
-            { label: "目的地", icon: MapPin },
-            { label: "天数", icon: CalendarDays },
-            { label: "预算", icon: WalletCards },
-            { label: "偏好", icon: SlidersHorizontal },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <span
-                key={item.label}
-                className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2"
-              >
-                <Icon className="h-3.5 w-3.5 text-teal-300" aria-hidden="true" />
-                {item.label}
-              </span>
-            );
-          })}
-        </div>
-      </div>
       <QuickPrompts
         onPick={(prompt) => {
           setValue(prompt);

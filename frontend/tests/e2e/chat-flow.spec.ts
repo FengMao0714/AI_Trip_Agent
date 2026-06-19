@@ -143,32 +143,40 @@ test("renders mock SSE itinerary and manages recent sessions", async ({ page }) 
   await page.reload();
 
   await expect(page.getByText("AI 旅行规划工作台")).toBeVisible();
-  await expect(page.getByText("规划控制台").first()).toBeVisible();
   await expect(page.getByText("实时 Agent 状态")).toBeVisible();
 
   await page.getByRole("button", { name: "北京3天历史文化路线" }).click();
   await page.getByRole("button", { name: "发送消息" }).click();
 
   await expect(page.getByText("已生成一版测试行程").first()).toBeVisible();
-  await expect(page.getByText("行程概览")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "行程" })).toBeVisible();
+  await expect(page.getByText("全程天气")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Day 1.*第 1 天/ }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText("09:00-11:00")).toBeVisible();
+  await page.getByRole("button", { name: "收起对话面板" }).click();
+  await expect(page.getByRole("button", { name: "展开对话面板" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "发送消息" })).toHaveCount(0);
+  await page.getByRole("button", { name: "展开对话面板" }).click();
+  await expect(page.getByRole("button", { name: "发送消息" })).toBeVisible();
   await expect(page.getByText("可信执行分").first()).toBeVisible();
-  await expect(page.getByText("预算使用率").first()).toBeVisible();
-  await expect(page.getByText("地图核验").first()).toBeVisible();
-  await expect(page.getByText("来源与验证", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "来源与验证" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "导出行程方案" })).toBeVisible();
   await expect(page.getByText("天安门广场").first()).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("行程概览")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "行程" })).toBeVisible();
   await expect(page.getByText("天安门广场").first()).toBeVisible();
 
   await page.getByRole("button", { name: "历史会话" }).click();
   await expect(page.getByRole("dialog").getByText("北京行程")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "新建会话" }).click();
-  await expect(page.getByText("还没有生成行程")).toBeVisible();
+  await expect(page.getByText("还没有生成行程").first()).toBeVisible();
 
   await page.getByRole("button", { name: "历史会话" }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^北京行程/ }).click();
-  await expect(page.getByText("行程概览")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "行程" })).toBeVisible();
   await expect(page.getByText("天安门广场").first()).toBeVisible();
 
   await page.getByRole("button", { name: "历史会话" }).click();

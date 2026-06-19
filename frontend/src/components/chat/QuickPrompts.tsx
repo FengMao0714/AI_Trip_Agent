@@ -28,7 +28,7 @@ interface QuickPromptsProps {
 
 export function QuickPrompts({ onPick }: QuickPromptsProps) {
   return (
-    <div className="flex min-w-0 max-w-full flex-wrap gap-2 overflow-hidden pb-1 sm:flex-nowrap sm:overflow-x-auto">
+    <div className="flex min-w-0 max-w-full flex-wrap gap-2 pb-1">
       {prompts.map((prompt) => {
         const Icon = prompt.icon;
         return (
@@ -37,7 +37,7 @@ export function QuickPrompts({ onPick }: QuickPromptsProps) {
             type="button"
             variant="outline"
             size="sm"
-            className="h-auto shrink-0 rounded-lg border-white/10 bg-white/[0.045] px-3 py-2 text-left text-stone-200 hover:border-teal-300/35 hover:bg-teal-400/10 hover:text-teal-50"
+            className="h-auto min-w-[9.25rem] flex-1 justify-start rounded-lg border-white/10 bg-white/[0.045] px-3 py-2 text-left text-stone-200 hover:border-teal-300/35 hover:bg-teal-400/10 hover:text-teal-50"
             onClick={() => onPick(prompt.label)}
           >
             <Icon className="h-4 w-4 text-teal-300" aria-hidden="true" />

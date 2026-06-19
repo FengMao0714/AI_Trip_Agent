@@ -7,25 +7,33 @@ import {
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  Clock3,
   Database,
+  FileText,
+  PanelLeftClose,
+  PanelLeftOpen,
   MapPinned,
   MessageSquareText,
   Radio,
   Route,
   ShieldCheck,
+  WalletCards,
 } from "lucide-react";
 
 import { ChatHeader } from "@/components/layout/ChatHeader";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
+import { ExportDialog } from "@/components/itinerary/ExportDialog";
 import { ItineraryView } from "@/components/itinerary/ItineraryView";
 import { useChat } from "@/hooks/useChat";
 import { clearSession } from "@/lib/api";
 import { useChatStore } from "@/store/chatStore";
 import { Button } from "@/components/ui/button";
+import { getDayTitle } from "@/lib/dateDisplay";
 import { getItineraryInsights } from "@/lib/itineraryInsights";
 import { cn } from "@/lib/utils";
-import type { Itinerary } from "@/types/itinerary";
+import type { Activity as TripActivity, DayPlan, Itinerary } from "@/types/itinerary";
 
 type MobileView = "chat" | "itinerary" | "map";
 
@@ -146,39 +154,317 @@ function StatusMetric({
 }
 
 function DesktopOutputGrid({
-  isQuickAdjustDisabled,
   itinerary,
-  onQuickAdjust,
-  sessionId,
 }: {
-  isQuickAdjustDisabled?: boolean;
   itinerary: Itinerary | null;
-  onQuickAdjust?: (instruction: string) => void;
-  sessionId?: string;
 }) {
   return (
     <>
-      <main className="min-h-0 overflow-auto rounded-xl border border-white/10 bg-[#07100f]/95 p-3 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <MapWorkspace itinerary={itinerary} />
+      <ItinerarySummaryPanel itinerary={itinerary} />
+    </>
+  );
+}
+
+function formatCurrency(value?: number | null) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${Math.round(value).toLocaleString("zh-CN")} 元`
+    : "--";
+}
+
+function getDaySubtitle(day: DayPlan) {
+  const names = day.activities
+    .slice(0, 3)
+    .map((activity) => activity.place_name)
+    .filter(Boolean);
+
+  return names.length > 0 ? names.join(" · ") : "等待 Agent 补全当日节点";
+}
+
+function getActivityBadge(activity: TripActivity) {
+  if (activity.is_verified) {
+    return "官方验证";
+  }
+
+  if (activity.source || activity.source_refs?.length) {
+    return "来源可追溯";
+  }
+
+  return "待核验";
+}
+
+function MapWorkspace({ itinerary }: { itinerary: Itinerary | null }) {
+  const insights = itinerary ? getItineraryInsights(itinerary) : null;
+
+  return (
+    <main className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-xl border border-white/10 bg-[#07100f]/95 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="min-h-0 p-3 pb-0">
         {itinerary ? (
-          <ItineraryView
-            itinerary={itinerary}
-            isQuickAdjustDisabled={isQuickAdjustDisabled}
-            onQuickAdjust={onQuickAdjust}
-            sessionId={sessionId}
-          />
+          <MapView itinerary={itinerary} variant="immersive" />
         ) : (
           <EmptyItineraryPanel />
         )}
-      </main>
-      <aside className="grid min-h-0 grid-rows-[minmax(360px,1fr)_auto] gap-3">
-        {itinerary ? (
-          <MapView itinerary={itinerary} />
-        ) : (
-          <EmptyItineraryPanel compact />
-        )}
-        <VerificationPanel itinerary={itinerary} />
+      </div>
+
+      <div className="mx-3 mb-3 mt-3 grid grid-cols-4 overflow-hidden rounded-xl border border-white/10 bg-[#0b1514]/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <MapFooterStat
+          icon={WalletCards}
+          label="预计费用"
+          value={itinerary ? formatCurrency(itinerary.total_cost) : "--"}
+        />
+        <MapFooterStat
+          icon={MapPinned}
+          label="景点数量"
+          value={insights ? `${insights.activityCount} 个` : "--"}
+        />
+        <MapFooterStat
+          icon={CalendarDays}
+          label="行程天数"
+          value={insights ? `${insights.dayCount} 天` : "--"}
+        />
+        <MapFooterStat
+          icon={Clock3}
+          label="总时长预估"
+          value={
+            insights
+              ? `${Math.max(1, Math.round(insights.totalTransportMinutes / 60))} 小时`
+              : "--"
+          }
+        />
+      </div>
+    </main>
+  );
+}
+
+function MapFooterStat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof WalletCards;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 border-r border-white/10 px-4 py-3 last:border-r-0">
+      <div className="flex items-center gap-2 text-xs text-stone-400">
+        <Icon className="h-4 w-4 shrink-0 text-teal-300" aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </div>
+      <p className="mt-1 truncate text-lg font-semibold text-stone-100">{value}</p>
+    </div>
+  );
+}
+
+function ItinerarySummaryPanel({
+  itinerary,
+}: {
+  itinerary: Itinerary | null;
+}) {
+  const [expandedDayNumbers, setExpandedDayNumbers] = useState<Set<number>>(
+    () => new Set(itinerary?.days[0] ? [itinerary.days[0].day] : []),
+  );
+
+  useEffect(() => {
+    setExpandedDayNumbers(new Set(itinerary?.days[0] ? [itinerary.days[0].day] : []));
+  }, [itinerary]);
+
+  if (!itinerary) {
+    return (
+      <aside className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3">
+        <EmptyItineraryPanel compact />
+        <VerificationPanel itinerary={null} />
       </aside>
-    </>
+    );
+  }
+
+  function toggleDay(dayNumber: number) {
+    setExpandedDayNumbers((current) => {
+      const next = new Set(current);
+      if (next.has(dayNumber)) {
+        next.delete(dayNumber);
+      } else {
+        next.add(dayNumber);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <aside className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3">
+      <div className="min-h-0 space-y-3 overflow-auto pr-1">
+        <section className="overflow-hidden rounded-xl border border-white/10 bg-[#07100f]/95 text-stone-100 shadow-[0_24px_70px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-teal-200/75">
+                Itinerary
+              </p>
+              <h3 className="mt-1 text-base font-semibold text-amber-50">行程</h3>
+            </div>
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-medium text-stone-300">
+              <FileText className="h-3.5 w-3.5 text-teal-300" aria-hidden="true" />
+              结构化行程
+            </span>
+          </div>
+
+          <div className="space-y-3 p-3">
+            <div className="space-y-2">
+              {itinerary.days.map((day) => {
+                const isExpanded = expandedDayNumbers.has(day.day);
+                return (
+                  <DayAccordionCard
+                    key={day.day}
+                    day={day}
+                    isExpanded={isExpanded}
+                    onToggle={() => toggleDay(day.day)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <VerificationPanel itinerary={itinerary} />
+      </div>
+
+      <div className="rounded-xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(20,184,166,0.10))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <ExportDialog
+          itinerary={itinerary}
+          triggerClassName="h-11 w-full justify-center border-amber-200/35 bg-amber-300/90 font-semibold text-zinc-950 hover:bg-amber-200 hover:text-zinc-950"
+          triggerLabel="导出行程方案"
+        />
+      </div>
+    </aside>
+  );
+}
+
+function DayAccordionCard({
+  day,
+  isExpanded,
+  onToggle,
+}: {
+  day: DayPlan;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <article
+      className={cn(
+        "overflow-hidden rounded-lg border transition-colors",
+        isExpanded
+          ? "border-teal-300/35 bg-teal-400/12 text-teal-50 shadow-[0_0_32px_rgba(20,184,166,0.12)]"
+          : "border-white/10 bg-white/[0.035] text-stone-300",
+      )}
+    >
+      <button
+        type="button"
+        className="w-full px-3 py-2.5 text-left hover:bg-white/[0.035]"
+        aria-expanded={isExpanded}
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 font-semibold">
+            <CalendarDays
+              className={cn(
+                "h-4 w-4",
+                isExpanded ? "text-teal-200" : "text-stone-500",
+              )}
+              aria-hidden="true"
+            />
+            Day {day.day}
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              isExpanded && "rotate-180 text-teal-200",
+            )}
+            aria-hidden="true"
+          />
+        </div>
+        <p className="mt-1 truncate text-sm font-medium text-stone-200">
+          {getDayTitle(day)}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-stone-500">
+          {getDaySubtitle(day)}
+        </p>
+      </button>
+
+      {isExpanded ? (
+        <div className="space-y-2 border-t border-white/10 bg-black/15 p-3">
+          {day.weather?.advice ? (
+            <div className="rounded-md border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              {day.weather.advice}
+            </div>
+          ) : null}
+          {day.activities.length > 0 ? (
+            day.activities.map((activity, index) => (
+              <ActivityRow
+                key={`${day.day}-${activity.time_slot}-${activity.place_name}-${index}`}
+                activity={activity}
+                index={index}
+              />
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.035] px-3 py-2 text-xs leading-5 text-stone-400">
+              当天还没有可展示的活动节点，等待 Agent 返回更多结构化行程。
+            </div>
+          )}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function ActivityRow({
+  activity,
+  index,
+}: {
+  activity: TripActivity;
+  index: number;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.045] p-3">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-teal-300/20 bg-teal-400/10 text-xs font-semibold text-teal-100">
+          {index + 1}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-stone-100">
+                {activity.place_name}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-stone-500">
+                {activity.place_type}
+                {activity.address ? ` · ${activity.address}` : ""}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-100">
+              {activity.cost > 0 ? formatCurrency(activity.cost) : "免费"}
+            </span>
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-stone-300">
+              <Clock3 className="h-3.5 w-3.5 text-amber-200" aria-hidden="true" />
+              {activity.time_slot}
+            </span>
+            <span className="rounded-md border border-teal-300/20 bg-teal-400/10 px-2 py-1 font-medium text-teal-100">
+              {getActivityBadge(activity)}
+            </span>
+            {activity.rating ? (
+              <span className="rounded-md border border-sky-300/20 bg-sky-400/10 px-2 py-1 font-medium text-sky-100">
+                评分 {activity.rating}
+              </span>
+            ) : null}
+          </div>
+
+          <p className="mt-2 line-clamp-3 text-xs leading-5 text-stone-400">
+            {activity.description}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -304,6 +590,7 @@ export function MainLayout({ initialQuery = "" }: MainLayoutProps) {
   } = useChat();
   const [initialInput, setInitialInput] = useState(initialQuery);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
+  const [isChatCollapsed, setChatCollapsed] = useState(false);
   const visibleItinerary = generatedItinerary;
   const lastMessage = messages[messages.length - 1];
   const showThinking =
@@ -368,35 +655,82 @@ export function MainLayout({ initialQuery = "" }: MainLayoutProps) {
         thinkingStep={thinkingStep}
       />
 
-      <div className="hidden min-h-0 flex-1 gap-3 p-3 lg:grid lg:grid-cols-[minmax(340px,25%)_minmax(0,45%)_minmax(360px,30%)]">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#07100f]/95 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <div className="min-h-0 flex-1">
-            <MessageList
-              messages={messages}
-              isThinking={showThinking}
-              isReasoningCollapsed={isReasoningCollapsed}
-              onReasoningCollapsedChange={setReasoningCollapsed}
-              reasoningEvents={reasoningEvents}
-              thinkingStep={thinkingStep ?? "正在组织景点、路线和天气信息..."}
-            />
-            {error ? (
-              <div className="mx-4 mb-4 flex items-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-200 sm:mx-6">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                {error}
+      <div
+        className={cn(
+          "hidden min-h-0 flex-1 gap-3 p-3 transition-[grid-template-columns] duration-300 lg:grid",
+          isChatCollapsed
+            ? "lg:grid-cols-[4.75rem_minmax(0,1fr)_minmax(360px,28%)]"
+            : "lg:grid-cols-[minmax(330px,23%)_minmax(0,1fr)_minmax(320px,24%)]",
+        )}
+      >
+        {isChatCollapsed ? (
+          <section className="flex min-h-0 flex-col items-center overflow-hidden rounded-xl border border-white/10 bg-[#07100f]/95 px-2 py-3 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 rounded-lg border-teal-300/25 bg-teal-400/10 text-teal-100 hover:bg-teal-300/15 hover:text-teal-50"
+              aria-label="展开对话面板"
+              onClick={() => setChatCollapsed(false)}
+            >
+              <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+            </Button>
+            <div className="mt-4 flex h-11 w-11 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-stone-300">
+              <MessageSquareText className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="mt-4 h-px w-8 bg-white/10" />
+            <div className="mt-4 flex flex-col items-center gap-2 text-[10px] font-medium text-stone-500 [writing-mode:vertical-rl]">
+              <span>对话已收起</span>
+            </div>
+            {isLoading ? (
+              <span className="mt-auto h-2.5 w-2.5 rounded-full bg-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.7)]" />
+            ) : (
+              <span className="mt-auto h-2.5 w-2.5 rounded-full bg-teal-300 shadow-[0_0_18px_rgba(45,212,191,0.55)]" />
+            )}
+          </section>
+        ) : (
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#07100f]/95 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-stone-200">
+                <MessageSquareText className="h-4 w-4 text-teal-300" aria-hidden="true" />
+                对话
               </div>
-            ) : null}
-          </div>
-          <ChatInput
-            initialValue={initialInput}
-            isLoading={isLoading}
-            onSend={handleSend}
-          />
-        </section>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-md text-stone-400 hover:bg-white/10 hover:text-stone-100"
+                aria-label="收起对话面板"
+                onClick={() => setChatCollapsed(true)}
+              >
+                <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1">
+              <MessageList
+                messages={messages}
+                isThinking={showThinking}
+                isReasoningCollapsed={isReasoningCollapsed}
+                onReasoningCollapsedChange={setReasoningCollapsed}
+                reasoningEvents={reasoningEvents}
+                thinkingStep={thinkingStep ?? "正在组织景点、路线和天气信息..."}
+              />
+              {error ? (
+                <div className="mx-4 mb-4 flex items-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-200 sm:mx-6">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  {error}
+                </div>
+              ) : null}
+            </div>
+            <ChatInput
+              initialValue={initialInput}
+              isLoading={isLoading}
+              onSend={handleSend}
+            />
+          </section>
+        )}
         <DesktopOutputGrid
-          isQuickAdjustDisabled={isLoading}
           itinerary={visibleItinerary}
-          onQuickAdjust={handleQuickAdjust}
-          sessionId={generatedItinerary ? sessionId : undefined}
         />
       </div>
 

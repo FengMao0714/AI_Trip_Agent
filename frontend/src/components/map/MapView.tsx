@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, MapPinned, Route, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CloudSun, MapPinned, Route, ShieldCheck, Wind } from "lucide-react";
 
 import { AMapContainer } from "@/components/map/AMapContainer";
 import { DayFilterBar } from "@/components/map/DayFilterBar";
@@ -10,16 +10,19 @@ import { POIMarker } from "@/components/map/POIMarker";
 import { RouteLine } from "@/components/map/RouteLine";
 import { useAMap } from "@/hooks/useAMap";
 import { getItineraryInsights } from "@/lib/itineraryInsights";
-import type { Itinerary } from "@/types/itinerary";
+import { cn } from "@/lib/utils";
+import type { DayPlan, Itinerary, Weather } from "@/types/itinerary";
 import type { AMapOverlay } from "@/types/amap";
 import type { POIMarker as POIMarkerData, RoutePath } from "@/types/map";
 
 type SelectedDay = "all" | number;
+type ViewMode = "map" | "route";
 
 const FIT_VIEW_PADDING: [number, number, number, number] = [56, 40, 56, 40];
 
 interface MapViewProps {
   itinerary: Itinerary;
+  variant?: "panel" | "immersive";
 }
 
 function hasValidCoordinates(value: { lng: number; lat: number }) {
@@ -121,13 +124,117 @@ function createMapLayers(itinerary: Itinerary) {
   return { markers, routes };
 }
 
-export function MapView({ itinerary }: MapViewProps) {
+function formatTemperature(weather?: Weather) {
+  if (
+    weather?.temperature_min !== undefined &&
+    weather.temperature_max !== undefined
+  ) {
+    return `${weather.temperature_min}-${weather.temperature_max}°C`;
+  }
+
+  const rangeMatch = weather?.condition.match(
+    /(?:气温)?\s*(-?\d+)\s*(?:-|~|至|到)\s*(-?\d+)\s*(?:℃|°C|度)?/i,
+  );
+  if (rangeMatch) {
+    return `${rangeMatch[1]}-${rangeMatch[2]}°C`;
+  }
+
+  const singleMatch = weather?.condition.match(/(-?\d+)\s*(?:℃|°C|度)/i);
+  if (singleMatch) {
+    return `${singleMatch[1]}°C`;
+  }
+
+  return "温度待确认";
+}
+
+function formatWeatherCondition(weather?: Weather) {
+  if (!weather?.condition) {
+    return "天气待确认";
+  }
+
+  const condition = weather.condition
+    .replace(
+      /[,，、]?\s*气温\s*-?\d+\s*(?:-|~|至|到)\s*-?\d+\s*(?:℃|°C|度)?/gi,
+      "",
+    )
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(/^[,，、]+|[,，、]+$/g, "");
+
+  return condition || weather.condition;
+}
+
+function getWeatherDay(days: DayPlan[], selectedDay: SelectedDay) {
+  if (selectedDay !== "all") {
+    return days.find((day) => day.day === selectedDay) ?? null;
+  }
+
+  return days.find((day) => day.weather) ?? days[0] ?? null;
+}
+
+function MapWeatherCard({
+  day,
+  isImmersive,
+  selectedDay,
+}: {
+  day: DayPlan | null;
+  isImmersive: boolean;
+  selectedDay: SelectedDay;
+}) {
+  const weather = day?.weather;
+  const title = selectedDay === "all" ? "全程天气" : `Day ${day?.day ?? "--"} 天气`;
+
+  return (
+    <div
+      className={cn(
+        "absolute right-3 z-30 w-[min(17rem,calc(100%-1.5rem))] rounded-xl border border-white/10 bg-[#07100f]/90 p-3 text-stone-100 shadow-[0_18px_50px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:right-4",
+        isImmersive ? "top-4" : "top-3",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-300/25 bg-sky-400/10 text-sky-200 shadow-[0_0_28px_rgba(56,189,248,0.16)]">
+          <CloudSun className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-xs font-semibold text-teal-200/80">
+              {title}
+            </p>
+            <span className="shrink-0 rounded-md border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[11px] text-stone-400">
+              {day ? `Day ${day.day}` : "待同步"}
+            </span>
+          </div>
+          <p className="mt-1 truncate text-base font-semibold text-amber-50">
+            {formatWeatherCondition(weather)}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-400">
+            <span className="font-semibold text-stone-200">
+              {formatTemperature(weather)}
+            </span>
+            {weather?.wind ? (
+              <span className="inline-flex items-center gap-1">
+                <Wind className="h-3.5 w-3.5 text-sky-200" aria-hidden="true" />
+                {weather.wind}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-400">
+        {weather?.advice ?? "等待后端 weather 工具返回建议后显示。"}
+      </p>
+    </div>
+  );
+}
+
+export function MapView({ itinerary, variant = "panel" }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { amap, error, isLoading, map } = useAMap(containerRef);
   const [selectedDay, setSelectedDay] = useState<SelectedDay>("all");
   const [selectedMarker, setSelectedMarker] = useState<POIMarkerData | null>(
     null,
   );
+  const [viewMode, setViewMode] = useState<ViewMode>("map");
   const overlaysRef = useRef(new Map<string, AMapOverlay>());
 
   const { markers, routes } = useMemo(
@@ -269,8 +376,20 @@ export function MapView({ itinerary }: MapViewProps) {
     return () => window.clearTimeout(timer);
   }, [fitVisibleOverlays, map, visibleMarkers.length]);
 
+  const isImmersive = variant === "immersive";
+  const weatherDay = useMemo(
+    () => getWeatherDay(itinerary.days, selectedDay),
+    [itinerary.days, selectedDay],
+  );
+
   return (
-    <div className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-xl border border-white/10 bg-[#07100f] text-stone-100 shadow-[0_24px_70px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.06)]">
+    <div
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#07100f] text-stone-100 shadow-[0_24px_70px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.06)]",
+        isImmersive ? "min-h-0" : "min-h-[520px]",
+      )}
+    >
+      {!isImmersive ? (
       <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -297,11 +416,18 @@ export function MapView({ itinerary }: MapViewProps) {
           </div>
         </div>
       </div>
-      <div className="relative min-h-[420px] flex-1">
+      ) : null}
+      <div className={cn("relative flex-1", isImmersive ? "min-h-0" : "min-h-[420px]")}>
         <AMapContainer
           containerRef={containerRef}
           error={error}
           isLoading={isLoading}
+        />
+
+        <MapWeatherCard
+          day={weatherDay}
+          isImmersive={isImmersive}
+          selectedDay={selectedDay}
         />
 
         {!error ? (
@@ -332,7 +458,80 @@ export function MapView({ itinerary }: MapViewProps) {
 
           <MarkerPopup amap={amap} map={map} marker={selectedMarker} />
 
-          <div className="absolute left-3 right-3 top-14 z-10 sm:left-4 sm:right-auto">
+          {isImmersive ? (
+            <div className="absolute left-4 top-4 z-10 w-[min(28rem,calc(100%-2rem))] rounded-xl border border-white/10 bg-[#07100f]/86 p-2 shadow-2xl backdrop-blur">
+              <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-white/10 bg-black/20 text-sm font-semibold">
+                <button
+                  type="button"
+                  className={cn(
+                    "h-11 transition-colors",
+                    viewMode === "map"
+                      ? "bg-teal-400/20 text-teal-100 shadow-[inset_0_0_24px_rgba(45,212,191,0.18)]"
+                      : "text-stone-400 hover:bg-white/[0.04] hover:text-stone-200",
+                  )}
+                  onClick={() => setViewMode("map")}
+                >
+                  行程地图
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "h-11 transition-colors",
+                    viewMode === "route"
+                      ? "bg-teal-400/20 text-teal-100 shadow-[inset_0_0_24px_rgba(45,212,191,0.18)]"
+                      : "text-stone-400 hover:bg-white/[0.04] hover:text-stone-200",
+                  )}
+                  onClick={() => {
+                    setSelectedDay("all");
+                    setSelectedMarker(null);
+                    setViewMode("route");
+                  }}
+                >
+                  路线总览
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {isImmersive && viewMode === "route" ? (
+            <div className="absolute left-4 top-36 z-10 max-h-[42%] w-[min(26rem,calc(100%-2rem))] overflow-auto rounded-xl border border-white/10 bg-[#07100f]/90 p-3 text-xs text-stone-300 shadow-2xl backdrop-blur">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="font-semibold text-stone-100">路线总览</p>
+                <span className="rounded-md border border-teal-300/20 bg-teal-400/10 px-2 py-1 text-teal-100">
+                  {routes.length} 段路线
+                </span>
+              </div>
+              <div className="space-y-2">
+                {routes.length > 0 ? (
+                  routes.slice(0, 8).map((route) => (
+                    <div
+                      key={route.id}
+                      className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-stone-100">Day {route.day}</span>
+                        <span className="text-stone-500">{route.mode}</span>
+                      </div>
+                      <p className="mt-1 text-stone-400">
+                        {route.distance_km} km · {route.duration_min} min
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-lg border border-dashed border-white/10 bg-white/[0.035] px-3 py-2 leading-5 text-stone-400">
+                    当前行程还没有返回交通段，待后端补充 route_plan 后会在这里展示。
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          <div
+            className={cn(
+              "absolute left-3 right-3 z-10 sm:left-4 sm:right-auto",
+              isImmersive ? "top-20" : "top-14",
+            )}
+          >
             <DayFilterBar
               days={itinerary.days}
               selectedDay={selectedDay}
@@ -340,7 +539,12 @@ export function MapView({ itinerary }: MapViewProps) {
             />
           </div>
 
-          <div className="absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-[#07100f]/90 px-3 py-2 text-xs text-stone-400 shadow-lg backdrop-blur">
+          <div
+            className={cn(
+              "absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-[#07100f]/90 px-3 py-2 text-xs text-stone-400 shadow-lg backdrop-blur",
+              isImmersive && "bottom-24",
+            )}
+          >
             <MapPinned className="mr-1 inline h-3.5 w-3.5 text-teal-300" aria-hidden="true" />
             <span className="font-semibold text-stone-100">
               {visibleMarkers.length}
@@ -381,7 +585,12 @@ export function MapView({ itinerary }: MapViewProps) {
           ) : null}
 
           {visibleMarkers.length > 0 ? (
-            <div className="absolute bottom-3 right-3 z-10 max-h-44 w-56 overflow-auto rounded-lg border border-white/10 bg-[#07100f]/90 p-3 text-xs text-stone-400 shadow-lg backdrop-blur">
+            <div
+              className={cn(
+                "absolute bottom-3 right-3 z-10 max-h-44 w-56 overflow-auto rounded-lg border border-white/10 bg-[#07100f]/90 p-3 text-xs text-stone-400 shadow-lg backdrop-blur",
+                isImmersive && "bottom-24",
+              )}
+            >
               <p className="mb-2 font-semibold text-stone-100">当前地图点位</p>
               <div className="space-y-1.5">
                 {visibleMarkers.slice(0, 6).map((marker) => (

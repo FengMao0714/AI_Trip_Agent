@@ -60,11 +60,31 @@
 
   * {
     @apply border-border;
+    scrollbar-color: rgba(45, 212, 191, 0.42) rgba(255, 255, 255, 0.06);
+    scrollbar-width: thin;
   }
 
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-inter), "Microsoft YaHei", "PingFang SC", Arial,
       sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(45, 212, 191, 0.38);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(45, 212, 191, 0.55);
   }
 }

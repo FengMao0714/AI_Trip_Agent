@@ -5,7 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#030706]">
       <Navbar />
       <main>
         <HeroSection />
