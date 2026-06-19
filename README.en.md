@@ -4,7 +4,7 @@ Language: [简体中文](README.md) | English
 
 AI Trip Agent is a full-stack travel planning assistant. It turns natural-language travel requests into structured itineraries, streams the planning process to the browser, and visualizes generated stops and routes on an interactive map.
 
-This repository is the cleaned engineering version of the project for portfolio and resume use. Graduation papers, defense slides, generated outputs, local dependencies, and private environment files are intentionally excluded.
+This repository keeps the core engineering code, runtime configuration, and project documentation while excluding local dependencies, private environment files, and temporary generated artifacts.
 
 ## Features
 
@@ -96,7 +96,7 @@ Important variables:
 
 ## Quick Demo
 
-For portfolio review, run the deterministic demo path first. It avoids external LLM instability while still exercising the backend, SSE stream, session persistence, itinerary parsing, and frontend rendering.
+For a stable local run, use the deterministic demo path first. It avoids external LLM instability while still exercising the backend, SSE stream, session persistence, itinerary parsing, and frontend rendering.
 
 ```powershell
 docker compose up -d postgres redis
@@ -170,7 +170,7 @@ The helper enables `http://127.0.0.1:10808` for network downloads by default whi
 
 ## Demo Mode
 
-`DEMO_MODE=true` is intended for public demos, interviews, and offline review. It keeps the user-facing flow stable when an external LLM, map, weather, or POI provider is unavailable. The backend still validates structured requirements, streams SSE events, stores session context in Redis, and returns a complete itinerary shape that the frontend renders normally.
+`DEMO_MODE=true` is intended for stable demos and local debugging. It keeps the user-facing flow stable when an external LLM, map, weather, or POI provider is unavailable. The backend still validates structured requirements, streams SSE events, stores session context in Redis, and returns a complete itinerary shape that the frontend renders normally.
 
 Use live mode for production-like testing:
 
@@ -231,8 +231,6 @@ corepack pnpm test:e2e
 ```
 
 ## Screenshots
-
-Current screenshots are generated from the local app and kept under `Docs/images/`.
 
 ![Landing page desktop screenshot](Docs/images/landing-desktop.png)
 
