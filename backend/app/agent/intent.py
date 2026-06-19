@@ -28,16 +28,25 @@ INTENT_FIELD_LABELS = {
     "people": "出行人数",
     "budget": "预算",
 }
+INVALID_INTENT_FIELD_MESSAGES = {
+    "days": "出行天数需要大于 0 天",
+    "people": "出行人数需要大于 0 人",
+    "budget": "预算需要大于 0 元",
+}
 
 INTENT_SYSTEM_PROMPT = """你是旅游助手中的需求理解 Agent。
 你的任务是从用户原始自然语言中抽取结构化旅游需求, 不生成行程, 不调用工具, 不决定下一步流程。
 
 抽取要求:
 - 只根据用户明确表达或上下文中已确认的信息填写字段, 不要编造。
+- 输出结构化 JSON, 字段名必须使用 TravelIntent schema 中的英文名。
+- budget 必须标准化为人民币总预算数字, 例如“1万元”输出 10000, “一千块/一千快”输出 1000。
+- people 必须包含用户本人, 例如“我和父母”输出 3, “我和两个朋友”输出 3。
+- days、people、budget 可以直接输出数字; 如果用户明确给出 0 或负数, 保留该数值, 由后端代码判定非法。
 - 用户说“预算一般”“别太贵”等模糊预算时, budget 保持 null, 可把原话放入 constraints 或 preferences。
 - 用户说“玩几天”“待几天”但没有明确数字时, days 保持 null。
 - travel_style 只能从枚举中选择: 穷游、舒适、高端、亲子、情侣、特种兵、休闲。
-- missing_fields 由后端代码校验, 你可以给出建议但不要决定是否可以开始规划。
+- missing_fields 和 invalid_fields 由后端代码校验, 你可以给出建议但不要决定是否可以开始规划。
 - confidence 表示本次结构化抽取整体置信度, 取 0 到 1。
 """
 
@@ -56,6 +65,7 @@ class TravelIntent(BaseModel):
     must_visit: list[str] = Field(default_factory=list, description="明确想去的景点")
     constraints: list[str] = Field(default_factory=list, description="约束条件")
     missing_fields: list[str] = Field(default_factory=list, description="缺失字段")
+    invalid_fields: list[str] = Field(default_factory=list, description="非法字段")
     confidence: float = Field(default=0.0, description="抽取置信度，0到1")
 
     @field_validator("destination", "departure_city", "start_date", mode="before")
@@ -68,30 +78,28 @@ class TravelIntent(BaseModel):
             return cleaned or None
         return str(value)
 
-    @field_validator("days", "people", mode="before")
+    @field_validator("days", mode="before")
     @classmethod
-    def _positive_int_or_none(cls, value: Any) -> int | None:
-        if value in (None, ""):
-            return None
-        try:
-            parsed = int(value)
-        except (TypeError, ValueError):
-            return None
-        return parsed if parsed > 0 else None
+    def _coerce_days(cls, value: Any) -> int | None:
+        return _coerce_days_value(value)
+
+    @field_validator("people", mode="before")
+    @classmethod
+    def _coerce_people(cls, value: Any) -> int | None:
+        return _coerce_people_value(value)
 
     @field_validator("budget", mode="before")
     @classmethod
-    def _positive_budget_or_none(cls, value: Any) -> float | None:
-        if value in (None, ""):
-            return None
-        try:
-            parsed = float(value)
-        except (TypeError, ValueError):
-            return None
-        return parsed if parsed > 0 else None
+    def _coerce_budget(cls, value: Any) -> float | None:
+        return _coerce_budget_value(value)
 
     @field_validator(
-        "preferences", "must_visit", "constraints", "missing_fields", mode="before"
+        "preferences",
+        "must_visit",
+        "constraints",
+        "missing_fields",
+        "invalid_fields",
+        mode="before",
     )
     @classmethod
     def _string_list(cls, value: Any) -> list[str]:
@@ -128,6 +136,7 @@ class RequirementValidationResult(BaseModel):
     """Code-owned requirement validation result."""
 
     missing_fields: list[str] = Field(default_factory=list)
+    invalid_fields: list[str] = Field(default_factory=list)
     ready_to_plan: bool = False
     stage: TravelStage = "collecting_info"
 
@@ -140,12 +149,20 @@ class RequirementValidator:
     def validate_intent(self, intent: TravelIntent) -> RequirementValidationResult:
         """Return code-computed missing fields and planning readiness."""
         data = intent.model_dump()
-        missing_fields = [
-            field for field in self.required_fields if not data.get(field)
+        invalid_fields = [
+            field
+            for field in ("days", "people", "budget")
+            if data.get(field) is not None and data[field] <= 0
         ]
-        ready_to_plan = len(missing_fields) == 0
+        missing_fields = [
+            field
+            for field in self.required_fields
+            if field not in invalid_fields and not data.get(field)
+        ]
+        ready_to_plan = len(missing_fields) == 0 and len(invalid_fields) == 0
         return RequirementValidationResult(
             missing_fields=missing_fields,
+            invalid_fields=invalid_fields,
             ready_to_plan=ready_to_plan,
             stage="ready_to_plan" if ready_to_plan else "collecting_info",
         )
@@ -155,6 +172,7 @@ class RequirementValidator:
         validation = self.validate_intent(state.intent)
         intent_data = state.intent.model_dump()
         intent_data["missing_fields"] = validation.missing_fields
+        intent_data["invalid_fields"] = validation.invalid_fields
         return TravelState(
             raw_messages=state.raw_messages,
             intent=TravelIntent.model_validate(intent_data),
@@ -168,6 +186,14 @@ class RequirementValidator:
             INTENT_FIELD_LABELS[field]
             for field in missing_fields
             if field in INTENT_FIELD_LABELS
+        ]
+
+    def invalid_field_messages(self, invalid_fields: list[str]) -> list[str]:
+        """Return user-facing invalid field messages."""
+        return [
+            INVALID_INTENT_FIELD_MESSAGES[field]
+            for field in invalid_fields
+            if field in INVALID_INTENT_FIELD_MESSAGES
         ]
 
 
@@ -317,9 +343,11 @@ def normalize_intent(intent: TravelIntent) -> TravelIntent:
     data["preferences"] = _dedupe(data.get("preferences", []))
     data["must_visit"] = _dedupe(data.get("must_visit", []))
     data["constraints"] = _dedupe(data.get("constraints", []))
+    data["invalid_fields"] = _dedupe(data.get("invalid_fields", []))
     normalized = TravelIntent.model_validate(data)
     validation = RequirementValidator().validate_intent(normalized)
     data["missing_fields"] = validation.missing_fields
+    data["invalid_fields"] = validation.invalid_fields
     return TravelIntent.model_validate(data)
 
 
@@ -377,6 +405,7 @@ def merge_travel_intents(
 
     data["confidence"] = max(float(data.get("confidence") or 0.0), current.confidence)
     data["missing_fields"] = current_data.get("missing_fields", [])
+    data["invalid_fields"] = current_data.get("invalid_fields", [])
     return normalize_intent(TravelIntent.model_validate(data))
 
 
@@ -424,6 +453,7 @@ def travel_state_from_user_profile(user_profile: dict[str, Any] | None) -> Trave
             "must_visit",
             "constraints",
             "missing_fields",
+            "invalid_fields",
             "confidence",
         )
         if field in user_profile
@@ -487,6 +517,7 @@ def user_profile_with_travel_state(
     validation = RequirementValidator().validate_intent(state.intent)
     intent_data = state.intent.model_dump()
     intent_data["missing_fields"] = validation.missing_fields
+    intent_data["invalid_fields"] = validation.invalid_fields
     validated_state = TravelState(
         raw_messages=state.raw_messages,
         intent=TravelIntent.model_validate(intent_data),
@@ -510,6 +541,7 @@ def user_profile_with_travel_state(
         "must_visit",
         "constraints",
         "missing_fields",
+        "invalid_fields",
         "confidence",
     ):
         if field in intent_payload:
@@ -565,6 +597,100 @@ def _extract_json_object(text: str) -> str:
     if start == -1 or end == -1 or end <= start:
         raise ValueError("No JSON object found in intent response")
     return text[start : end + 1]
+
+
+def _coerce_days_value(value: Any) -> int | None:
+    """Normalize LLM or heuristic day expressions to an integer."""
+    simple_number = _coerce_int_literal(value)
+    if simple_number is not None:
+        return simple_number
+    if not isinstance(value, str):
+        return None
+
+    parsed = _extract_explicit_days(value)
+    if parsed is not None:
+        return parsed
+
+    stripped = value.strip()
+    return _chinese_number(stripped) or None
+
+
+def _coerce_people_value(value: Any) -> int | None:
+    """Normalize LLM or heuristic traveler expressions to an integer."""
+    simple_number = _coerce_int_literal(value)
+    if simple_number is not None:
+        return simple_number
+    if not isinstance(value, str):
+        return None
+
+    parsed = _extract_people(value)
+    if parsed is not None:
+        return parsed
+
+    stripped = value.strip()
+    return _chinese_number(stripped) or None
+
+
+def _coerce_budget_value(value: Any) -> float | None:
+    """Normalize budget expressions to RMB while preserving invalid numbers."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip()
+    if not text:
+        return None
+
+    signed_number = _coerce_float_literal(text)
+    if signed_number is not None:
+        return signed_number
+
+    negative_match = re.search(
+        r"(?:预算|人均|总预算|费用|花费|开销)?\s*[-负]\s*(?P<number>\d+(?:\.\d+)?)",
+        text,
+    )
+    if negative_match:
+        return -float(negative_match.group("number"))
+
+    parsed = _extract_budget(f"预算{text}")
+    return float(parsed) if parsed is not None else None
+
+
+def _coerce_int_literal(value: Any) -> int | None:
+    """Parse plain numeric literals without discarding zero or negatives."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else None
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip()
+    if not text:
+        return None
+
+    signed_number = re.search(r"[-+]?\d+(?:\.\d+)?", text)
+    if signed_number is None:
+        return None
+
+    parsed = float(signed_number.group(0))
+    return int(parsed) if parsed.is_integer() else None
+
+
+def _coerce_float_literal(value: str) -> float | None:
+    """Parse a plain signed number string without interpreting unit suffixes."""
+    if not re.fullmatch(r"[-+]?\d+(?:\.\d+)?", value):
+        return None
+    return float(value)
 
 
 def _none_if_unknown(value: str | None) -> str | None:

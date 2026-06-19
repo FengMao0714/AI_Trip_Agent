@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.agent.intent import build_heuristic_travel_intent
+from app.agent.intent import TravelIntent, build_heuristic_travel_intent
 from app.api import chat
 from app.api import health as health_module
 from app.api import session as session_module
@@ -549,6 +549,48 @@ def test_chat_endpoint_persists_travel_state_for_requirement_collection(
         "days",
         "budget",
     ]
+
+
+def test_chat_endpoint_clarifies_invalid_budget_before_agent(monkeypatch) -> None:
+    saved_sessions: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_extract_travel_intent(message: str, previous_intent=None):
+        return TravelIntent(
+            destination="西安",
+            days=3,
+            people=3,
+            budget=-100,
+            confidence=0.95,
+        )
+
+    async def fail_build_graph(**kwargs: Any) -> FakeGraph:
+        raise AssertionError("Agent graph should not run with invalid budget")
+
+    async def fake_save_session(session_id: str, data: dict[str, Any]) -> None:
+        saved_sessions.append((session_id, data))
+
+    monkeypatch.setattr(chat, "extract_travel_intent", fake_extract_travel_intent)
+    monkeypatch.setattr(chat, "build_graph", fail_build_graph)
+    monkeypatch.setattr(chat, "get_session", _empty_session)
+    monkeypatch.setattr(chat, "save_session", fake_save_session)
+    monkeypatch.setattr(chat, "_enforce_chat_rate_limit", _ignore_rate_limit)
+
+    response = _client().post(
+        "/api/v1/chat",
+        json={
+            "message": "我和父母去西安玩三天，预算-100。",
+            "session_id": "session-invalid-budget",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "预算需要大于 0 元" in response.text
+    assert "event: itinerary" not in response.text
+    travel_state = saved_sessions[0][1]["user_profile"]["travel_state"]
+    assert travel_state["intent"]["missing_fields"] == []
+    assert travel_state["intent"]["invalid_fields"] == ["budget"]
+    assert travel_state["stage"] == "collecting_info"
+    assert travel_state["confirmed"] is False
 
 
 def test_one_week_trip_duration_is_complete() -> None:

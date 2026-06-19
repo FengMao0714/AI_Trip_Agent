@@ -207,6 +207,46 @@ def test_heuristic_intent_merges_day_answer_with_previous_intent() -> None:
     assert intent.missing_fields == ["budget"]
 
 
+def test_travel_intent_normalizes_llm_style_string_values() -> None:
+    intent = TravelIntent(
+        destination="西安",
+        days="三天",
+        people="我和父母",
+        budget="一千快",
+    )
+
+    validated = RequirementValidator().apply(TravelState(intent=intent))
+
+    assert validated.intent.days == 3
+    assert validated.intent.people == 3
+    assert validated.intent.budget == 1000
+    assert validated.intent.missing_fields == []
+    assert validated.intent.invalid_fields == []
+    assert validated.stage == "ready_to_plan"
+
+
+def test_requirement_validator_marks_invalid_numeric_values() -> None:
+    intent = TravelIntent(
+        destination="西安",
+        days=0,
+        people=-2,
+        budget=-100,
+        missing_fields=[],
+        confidence=1.0,
+    )
+
+    validated = RequirementValidator().apply(TravelState(intent=intent))
+    question = ClarificationAgent().ask(validated)
+
+    assert validated.intent.missing_fields == []
+    assert validated.intent.invalid_fields == ["days", "people", "budget"]
+    assert validated.stage == "collecting_info"
+    assert validated.confirmed is False
+    assert "出行天数需要大于 0 天" in question
+    assert "出行人数需要大于 0 人" in question
+    assert "预算需要大于 0 元" in question
+
+
 async def test_intent_extraction_agent_accepts_structured_llm(monkeypatch) -> None:
     class FakeStructuredLLM:
         def with_structured_output(
@@ -236,6 +276,60 @@ async def test_intent_extraction_agent_accepts_structured_llm(monkeypatch) -> No
     assert "情侣出行" in result.preferences
     assert result.missing_fields == ["budget"]
     assert result.confidence == 0.92
+
+
+async def test_intent_extraction_agent_normalizes_string_values_from_llm(
+    monkeypatch,
+) -> None:
+    class FakeStructuredLLM:
+        def with_structured_output(
+            self, schema: type[TravelIntent]
+        ) -> FakeStructuredLLM:
+            return self
+
+        async def ainvoke(self, messages: list[Any]) -> dict[str, Any]:
+            return {
+                "destination": "西安",
+                "days": "三天",
+                "people": "我和父母",
+                "budget": "一千快",
+                "confidence": 0.94,
+            }
+
+    monkeypatch.setattr(intent_module, "_llm_extraction_enabled", lambda: True)
+
+    result = await IntentExtractionAgent(llm=FakeStructuredLLM()).extract(
+        "给我做一份西安旅行方案"
+    )
+
+    assert result.destination == "西安"
+    assert result.days == 3
+    assert result.people == 3
+    assert result.budget == 1000
+    assert result.missing_fields == []
+    assert result.invalid_fields == []
+    assert result.confidence == 0.94
+
+
+async def test_intent_extraction_agent_falls_back_when_llm_fails(monkeypatch) -> None:
+    class FailingLLM:
+        def with_structured_output(self, schema: type[TravelIntent]) -> FailingLLM:
+            return self
+
+        async def ainvoke(self, messages: list[Any]) -> TravelIntent:
+            raise RuntimeError("upstream timeout")
+
+    monkeypatch.setattr(intent_module, "_llm_extraction_enabled", lambda: True)
+
+    result = await IntentExtractionAgent(llm=FailingLLM()).extract(
+        "我和父母下周去西安玩三天，预算一万元。"
+    )
+
+    assert result.destination == "西安"
+    assert result.days == 3
+    assert result.people == 3
+    assert result.budget == 10000
+    assert result.missing_fields == []
 
 
 def test_travel_state_update_preserves_previous_fields() -> None:

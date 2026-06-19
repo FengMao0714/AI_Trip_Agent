@@ -1149,16 +1149,19 @@ def _build_clarification_message(
 
     if travel_state is not None:
         missing_fields = _intent_missing_field_labels(travel_state.intent)
+        invalid_fields = travel_state.intent.invalid_fields
     elif intent is None:
         missing_fields = []
+        invalid_fields = []
         if not _has_destination(message):
             missing_fields.append("目的地")
         if not _has_trip_days(message):
             missing_fields.append("出行天数")
     else:
         missing_fields = _intent_missing_field_labels(intent)
+        invalid_fields = intent.invalid_fields
 
-    if not missing_fields:
+    if not missing_fields and not invalid_fields:
         return None
 
     if travel_state is not None:
@@ -1268,11 +1271,11 @@ def _build_agent_planning_message(
     start_date = _extract_trip_start_date_text(message, intent)
     if start_date:
         fields.append(f"出发日期: {_normalize_trip_start_date(start_date)}")
-    if intent.days:
+    if intent.days and intent.days > 0:
         fields.append(f"游玩天数: {intent.days}天")
-    if intent.people:
+    if intent.people and intent.people > 0:
         fields.append(f"出行人数: {intent.people}人")
-    if intent.budget is not None:
+    if intent.budget is not None and intent.budget > 0:
         fields.append(f"总预算: {int(intent.budget)}元")
     if intent.travel_style:
         fields.append(f"旅行风格: {intent.travel_style}")
@@ -1451,11 +1454,15 @@ def _build_conservative_fallback_itinerary(
     intent: TravelIntent | None = None,
 ) -> dict[str, Any] | None:
     """Build a visible conservative itinerary when the model omits JSON."""
-    if intent is not None and intent.destination and intent.days:
+    if intent is not None and intent.destination and intent.days and intent.days > 0:
         itinerary = _build_conservative_itinerary(
             destination=intent.destination,
             days=intent.days,
-            budget=int(intent.budget) if intent.budget is not None else None,
+            budget=(
+                int(intent.budget)
+                if intent.budget is not None and intent.budget > 0
+                else None
+            ),
             user_message=message,
         )
         for day in itinerary.get("days", []):

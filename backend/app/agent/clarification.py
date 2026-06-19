@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from app.agent.intent import TravelIntent, TravelState
+from app.agent.intent import INVALID_INTENT_FIELD_MESSAGES, TravelIntent, TravelState
 
 QUESTION_BY_FIELD = {
     "destination": "想去哪个城市或区域",
@@ -22,23 +22,33 @@ class ClarificationAgent:
         missing_fields = [
             field for field in state.intent.missing_fields if field in QUESTION_BY_FIELD
         ]
-        if not missing_fields:
+        invalid_messages = [
+            INVALID_INTENT_FIELD_MESSAGES[field]
+            for field in state.intent.invalid_fields
+            if field in INVALID_INTENT_FIELD_MESSAGES
+        ]
+        if not missing_fields and not invalid_messages:
             return "信息已经比较完整了，我可以开始规划。"
 
         known_summary = _known_summary(state.intent)
         question_items = [QUESTION_BY_FIELD[field] for field in missing_fields[:4]]
         question_text = "、".join(question_items)
-        count_text = f"{len(question_items)} 个信息"
+        invalid_text = "、".join(invalid_messages)
+
+        if invalid_messages and question_items:
+            correction_text = f"{invalid_text}; 还需要补充: {question_text}"
+        elif invalid_messages:
+            correction_text = invalid_text
+        else:
+            correction_text = f"还需要你补充 {len(question_items)} 个信息: {question_text}"
 
         if known_summary:
             return (
                 f"可以，我会按“{known_summary}”来规划。"
-                f"还需要你补充 {count_text}: {question_text}？"
+                f"{correction_text}。"
             )
 
-        return (
-            f"可以，我先帮你把需求框起来。还需要你补充 {count_text}: {question_text}？"
-        )
+        return f"可以，我先帮你把需求框起来。{correction_text}。"
 
 
 def _known_summary(intent: TravelIntent) -> str:
@@ -54,9 +64,9 @@ def _known_summary(intent: TravelIntent) -> str:
         parts.append(intent.destination)
     if intent.start_date:
         parts.append(intent.start_date)
-    if intent.days:
+    if intent.days and intent.days > 0:
         parts.append(f"{intent.days}天")
-    if intent.people:
+    if intent.people and intent.people > 0:
         parts.append(f"{intent.people}人")
 
     budget_text = _budget_text(intent)
@@ -72,7 +82,7 @@ def _known_summary(intent: TravelIntent) -> str:
 
 
 def _budget_text(intent: TravelIntent) -> str | None:
-    if intent.budget is not None:
+    if intent.budget is not None and intent.budget > 0:
         return f"预算{int(intent.budget)}元"
     if any(
         text in intent.constraints for text in ("预算一般", "别太贵", "预算不要太高")
